@@ -1,8 +1,10 @@
 ---
 title: "PhenoNetz-Ergebnisse"
-fontsize:  8 pt
-output: beamer_presentation
-colortheme: "dolphin"
+fontsize: 8 pt
+output:
+  beamer_presentation: default
+  slidy_presentation: default
+colortheme: dolphin
 ---
 
 ```{r setup, include=FALSE}
@@ -107,7 +109,7 @@ severity_plot <- data %>%
   ggplot(., aes(x = Erlebnis, y = Wert, fill = Erlebnis)) +
   geom_bar(stat = "identity") +
   xlab("") +
-  ylab("\n Durchschnittliche Ausprägung") +
+  ylab("\n Durchschnittliche Stärke") +
   coord_flip() + theme_classic() +
   theme(
     legend.position  = "none",
@@ -268,7 +270,8 @@ Im Rahmen der PhenoNetz-Studie haben Sie fünfmal täglich über einen Zeitraum 
 - Ich bin misstrauisch gegenüber anderen Menschen
 - Ich grüble
 
-![](insights_logo.png){width=45%}
+
+![](insights_logo.png){width=30%}
 
 ## Durchschnittliche Ausprägung der Erlebnisse
 Hier zeigen wir Ihnen die durchschnittliche Stärke, mit der Sie einzelne Erlebnisse berichtet haben:
@@ -277,13 +280,23 @@ severity_plot
 ```
 
 ## Erlebnisse über die Zeit
-Hier zeigen wir Ihnen, wie Erlebnisse über die Zeit der PhenoNetz-Studie geschwankt haben:
+Hier zeigen wir Ihnen, wie sich Erlebnisse über die Zeit der PhenoNetz-Studie bei Ihnen verändert haben:
+
 ````{r}
 fluctuation_plot
 ```
 
+## PhenoNetzwerke
+Auf den folgenden zwei Folien zeigen wir Ihnen Ihre persönlichen Netzwerke, die aus den Daten, die Sie über zwei Wochen in die "InsightsApp" eingegeben haben, erstellt wurden. Bei der Darstellung dieser Netzwerke gilt Folgendes:
+
+- Jedes der zehn Erlebnisse wird durch einen eigenen Kreis dargestellt.
+- Blaue Linien zwischen den Kreisen zeigen positive Zusammenhänge. Das heißt, zwei so verbundene Erlebnisse verstärken sich im Schnitt gegenseitig.
+- Rote Linien zwischen den Kreisen zeigen negative Zusammenhänge. Das heißt, zwei so verbundene Erlebnisse hemmen sich im Schnitt gegenseitig.
+- Je dicker die Linie, desto stärker die Verstärkung bzw. die Hemmung.
+- Falls es keine Linie zwischen zwei Kreisen gibt, haben diese Erlebnisse keinen oder nur einen sehr geringen Einfluss aufeinander.
+
 ## Netzwerk 1: Wie Ihre Erlebnisse zusammenhängen
-Dieses Netzwerk zeigt, wie Ihre Erlebnisse im Schnitt zu einem Zeitpunkt der Studie in Beziehung zueinander standen. Der zentrale Faktor in Ihrem Netzwerk ist `r most_central_item`. Dieser Faktor tauchte oft gleichzeitig mit den vielen anderen Faktoren auf, mit denen er im Netzwerk verbunden ist. Der insgesamt stärkste Zusammenhang zeigte sich zwischen `r strongest_connection_contemp [1]` und `r strongest_connection_contemp [2]`. `r formulation_contemp`.
+Dieses Netzwerk zeigt, welche Erlebnisse wie zu einem Zeitpunkt der Studie im Schnitt in Beziehung zueinander standen. Der zentrale Faktor in Ihrem Netzwerk ist `r most_central_item`. Dieser Faktor tauchte oft gleichzeitig mit den vielen anderen Faktoren auf, mit denen er im Netzwerk verbunden ist. Der insgesamt stärkste Zusammenhang zeigte sich zwischen `r strongest_connection_contemp [1]` und `r strongest_connection_contemp [2]`. `r formulation_contemp`.
 ```{r}
 qgraph::qgraph(
   contemporaneous_network,
@@ -304,7 +317,9 @@ qgraph::qgraph(
 )
 ```
 
-## Netzwerk 2: Wie Ihre Erlebnisse sich über die Zeit vorhersagen
+
+
+## Netzwerk 2: Wie sich Ihre Erlebnisse über die Zeit vorhersagen
 Dieses Netzwerk zeigt, wie sich Ihre Erlebnisse im Schnitt von einem Zeitpunkt zum nächsten Zeitpunkt (ca. 3 Stunden später) vorhersagten. `r formulation_temp_strongest`. `r formulation_temp`
 ```{r}
 qgraph::qgraph(
@@ -328,7 +343,7 @@ qgraph::qgraph(
 
 ## Bitte beachten Sie:
 - Die Netzwerke, die wir Ihnen vorgestellt haben, sind vorläufig und basieren auf Daten aus den zwei Wochen, in denen Sie an der PhenoNetz-Studie teilgenommen haben. Diese zwei Wochen sind unter Umständen nicht mit Ihrem regelmäßigen Alltag vergleichbar (z.B. weil es ggf. außergewöhnliche Ereignisse in Ihrem Leben gab). 
-- Es gibt bisher in der Forschung noch keine genaue Übereinstimmung darüber, wie man Netzwerke interpretieren sollte.
+- Es gibt bisher in der Forschung noch keine genaue Übereinstimmung darüber, wie man Netzwerk-Strukturen interpretieren sollte.
 - Keinesfalls ersetzen die Netzwerke eine psychologische Beratung oder Behandlung. 
 - Viele verschiedene Faktoren können das Aussehen der Netzwerke beeinflussen, z.B. welche Erlebnisse erfasst wurden, wie oft sie erhoben wurden, und wie oft diese Erlebnisse für Sie schwankten.
 
