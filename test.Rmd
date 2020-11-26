@@ -1,5 +1,5 @@
 ---
-title: "PhenoNetz-Ergebnisse"
+title: "PhenoNetz Ergebnisse"
 fontsize: 8 pt
 output:
   beamer_presentation: default
@@ -21,15 +21,21 @@ if (length(missing_pkgs <-
   install.packages(missing_pkgs)
 }
 
+set.seed(1)
+
 library(tidyverse)
 library(psychonetrics)
 library(qgraph)
 library(scales)
 
+alpha <- .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
+ID <- 2
+
+
 # ... function to compute model per person
 getPersonalizedModel <-
   function(df,
-           beepvar = "Questionnaire_of_Day",
+           beepvar = "Query_of_Day",
            dayvar = "date_ESM",
            vars = final_vars) {
     tryCatch(
@@ -38,10 +44,12 @@ getPersonalizedModel <-
           df,
           vars = vars,
           beta = "full",
+          #estimator = "FIML",
           beepvar = beepvar,
-          dayvar = dayvar
+          dayvar = dayvar, 
+          verbose = TRUE
           
-        )  %>% runmodel %>% prune(alpha = .05, recursive = F) %>% stepup(alpha = .05)
+        )  %>% runmodel %>% runmodel %>% prune(alpha = alpha, recursive = F) %>% stepup(alpha = alpha)
         return(model_pruned)
       },
       error = function(e) {
@@ -60,13 +68,11 @@ removeLinearTrends <- function(df) {
       df[, Vars[v]][!is.na(df[, Vars[v]])] <- residuals(lmResult)
     }
   }
-  return(df)
+  return(as_tibble(df))
 }
 # load data
-Questionnaire_Items_2020_04_02_16_02_06 <-
-  readxl::read_excel("Questionnaire_Items_2020-04-02_16-02-06.xlsx")
-
-data <- Questionnaire_Items_2020_04_02_16_02_06
+Questionnaire_Abfrage <- read_csv("Questionnaire_Abfrage.csv")
+data <- Questionnaire_Abfrage
 label_vars = c(
   "Ich bin traurig",
   "Ich nehme Dinge wahr, die andere \n    Menschen nicht wahrnehmen können",
@@ -82,13 +88,49 @@ label_vars = c(
 
 final_vars <- Vars <- paste0("var_", c(as.character(1:10)))
 
-
-
 model_personalized <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
-  filter(Participant_ID == 6) %>%
-  rename_at(vars(matches("1_1")), ~ final_vars) %>%
+  filter(Participant_ID == ID) %>%
+  mutate(
+    Day_Study = date_ESM - .$date_ESM[1] + 1,
+    DateTime = str_replace(DateTime, "UTC", "CET"),
+    Query_of_Day = case_when(
+      as.POSIXct(paste(date_ESM, "08:30:00")) <= DateTime &
+        as.POSIXct(paste(date_ESM, "10:30:00")) >= DateTime ~ 1,
+      as.POSIXct(paste(date_ESM, "11:30:00")) <= DateTime &
+        as.POSIXct(paste(date_ESM, "13:30:00")) >= DateTime ~ 2,
+      as.POSIXct(paste(date_ESM, "14:30:00")) <= DateTime &
+        as.POSIXct(paste(date_ESM, "16:30:00")) >= DateTime ~ 3,
+      as.POSIXct(paste(date_ESM, "17:30:00")) <= DateTime &
+        as.POSIXct(paste(date_ESM, "19:30:00")) >= DateTime ~ 4,
+      as.POSIXct(paste(date_ESM, "20:30:00")) <= DateTime &
+        as.POSIXct(paste(date_ESM, "22:30:00")) >= DateTime ~ 5
+    )
+  )  %>%
+  mutate(
+    Lead_Day = lead(Query_of_Day, 1),
+    Query_of_Day = case_when(
+      Lead_Day == Query_of_Day ~ Query_of_Day - 1,
+      is.na(Lead_Day == Query_of_Day) ~ Query_of_Day,
+      TRUE ~ Query_of_Day
+    )
+  ) %>%
+  mutate(
+    Ref_Time = case_when(
+      Query_of_Day == 1 ~ as.POSIXct(paste(date_ESM, "09:30:00")),
+      Query_of_Day == 2  ~  as.POSIXct(paste(date_ESM, "12:30:00")),
+      Query_of_Day == 3 ~ as.POSIXct(paste(date_ESM, "15:30:00")),
+      Query_of_Day == 4 ~ as.POSIXct(paste(date_ESM, "18:30:00")),
+      Query_of_Day == 5 ~ as.POSIXct(paste(date_ESM, "21:30:00"))
+    )
+  ) %>%
+  mutate(Diff_Time = difftime(DateTime, Ref_Time,  units = "mins")) %>%
+  mutate(Query_of_Day = ifelse(Diff_Time > 60, NA, Query_of_Day)) %>%
+  rename_at(vars(matches("-1-0")), ~ final_vars) %>%
+  mutate(across(matches("var_"), function(x)
+    ifelse(is.na(Query_of_Day), NA, x))) %>%
+  select(-c(Timestamp, Lead_Day, Ref_Time, Diff_Time)) %>%
   mutate_at(vars(final_vars), scale) %>%
   removeLinearTrends() %>%
   mutate_at(vars(final_vars), scale) %>%
@@ -98,8 +140,8 @@ model_personalized <- data %>%
 severity_plot <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
-  filter(Participant_ID == 6) %>%
-  rename_at(vars(matches("1_1")), ~ label_vars) %>%
+  filter(Participant_ID == ID) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
   select(label_vars) %>%
   summarise_all(mean) %>%
   pivot_longer(cols = everything(),
@@ -109,7 +151,7 @@ severity_plot <- data %>%
   ggplot(., aes(x = Erlebnis, y = Wert, fill = Erlebnis)) +
   geom_bar(stat = "identity") +
   xlab("") +
-  ylab("\n Durchschnittliche Stärke") +
+  ylab("\n Durchschnittliche Stärke (%)") +
   coord_flip() + theme_classic() +
   theme(
     legend.position  = "none",
@@ -122,8 +164,8 @@ severity_plot <- data %>%
 most_variable_items <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
-  filter(Participant_ID == 6) %>%
-  rename_at(vars(matches("1_1")), ~ label_vars) %>%
+  filter(Participant_ID == ID) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
   select(label_vars) %>%
   summarise_all(sd) %>%
   pivot_longer(cols = everything(),
@@ -134,14 +176,15 @@ most_variable_items <- data %>%
 fluctuation_plot <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
-  filter(Participant_ID == 6) %>%
-  rename_at(vars(matches("1_1")), ~ label_vars) %>%
+  filter(Participant_ID == ID) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
   select(most_variable_items$Erlebnis, time_ESM) %>%
   pivot_longer(cols = most_variable_items$Erlebnis,
                names_to = "Erlebnis",
                values_to = "Wert") %>%
   ggplot(., aes(x = time_ESM, y = Wert, color = Erlebnis)) + facet_wrap( ~
-                                                                           Erlebnis, ncol = 1) + geom_line(size = 1) +
+                                                                           Erlebnis, ncol = 1) +  geom_line(size=1) +
+  geom_smooth(method = "loess", formula = y ~ x) +
   theme_classic() +
   xlab("\n Datum") +
   theme(
@@ -151,7 +194,8 @@ fluctuation_plot <- data %>%
     axis.text = element_text(size = 14, colour = "black")
   ) +
   scale_color_viridis_d() +
-  scale_x_datetime(breaks =  date_breaks("4 days"), labels = date_format("%d.%m."))
+  scale_y_continuous(limits = c(-10,100), breaks = c(0,25,50,75,100)) +
+  scale_x_datetime(breaks =  date_breaks("3 days"), labels = date_format("%d.%m."))
 
 # contemporaneous network
 contemporaneous_network <-
@@ -176,7 +220,9 @@ start_sentence <- c(
   "Je gestresster Sie sich fühlten, ",
   "Je zufriedener Sie mit sich waren, ",
   "Je ängstlicher Sie sich fühlten, ",
-  "Je schwerer es Ihnen fiel, sich zu Dingen zu motivieren, "
+  "Je schwerer es Ihnen fiel, sich zu Dingen zu motivieren, ",
+  "Je misstrauischer Sie gegenüber anderen Menschen waren, ",
+  "Je mehr Sie grübelten, "
 )
 
 end_sentence <-
@@ -188,7 +234,9 @@ end_sentence <-
     "desto gestresster fühlten Sie sich zur selben Zeit",
     "desto zufriedener waren Sie mit sich zur selben Zeit",
     "desto ängstlicher fühlten Sie sich zur selben Zeit",
-    "desto schwieriger fiel es Ihnen, sich zu Dingen zu motivieren"
+    "desto schwieriger fiel es Ihnen, sich zu Dingen zu motivieren",
+    "desto misstrauischer waren Sie gegenüber anderen Menschen",
+    "desto mehr grübelten Sie"
   )
 
 formulation_contemp <-
@@ -199,6 +247,7 @@ most_central_item <-
 
 # temporal network
 temporal_network <- getmatrix(model_personalized, "PDC")
+
 if (sum(temporal_network) > 0) {
   strongest_connection_temp <-
     label_vars[which(temporal_network == max(temporal_network), arr.ind = TRUE)]
@@ -210,9 +259,9 @@ if (sum(temporal_network) > 0) {
   formulation_temp_strongest <-
     paste0(
       "Der insgesamt stärkste Zusammenhang zeigte sich zwischen ",
-      strongest_connection_contemp[1],
+      strongest_connection_temp[1],
       " und ",
-      strongest_connection_contemp[2]
+      strongest_connection_temp[2]
     )
   
   temp_nodes <- which(temporal_network == max(temporal_network),
@@ -227,7 +276,9 @@ if (sum(temporal_network) > 0) {
     "Je gestresster Sie sich fühlten, ",
     "Je zufriedener Sie mit sich waren, ",
     "Je ängstlicher Sie sich fühlten, ",
-    "Je schwerer es Ihnen fiel, sich zu Dingen zu motivieren, "
+    "Je schwerer es Ihnen fiel, sich zu Dingen zu motivieren, ",
+    "Je misstrauischer Sie gegenüber anderen Menschen waren, ",
+    "Je mehr Sie grübelten, "
   )
   
   end_sentence <-
@@ -239,7 +290,9 @@ if (sum(temporal_network) > 0) {
       "desto gestresster fühlten Sie sich 3 Stunden später",
       "desto zufriedener waren Sie mit sich 3 Stunden später",
       "desto ängstlicher fühlten Sie sich 3 Stunden später",
-      "desto schwieriger fiel es Ihnen 3 Stunden später, sich zu Dingen zu motivieren"
+      "desto schwieriger fiel es Ihnen 3 Stunden später, sich zu Dingen zu motivieren",
+       "desto misstrauischer waren Sie 3 Stunden später gegenüber anderen Menschen",
+      "desto mehr grübelten Sie 3 Stunden später"
     )
   
   formulation_temp <-
@@ -249,7 +302,7 @@ if (sum(temporal_network) > 0) {
     c(
       "Bei Ihnen zeigten sich über die Zeit keine Zusammenhänge zwischen den Erlebnissen. Dies kann daran liegen, dass sich bei Ihnen die Erlebnisse während der zwei Wochen der Teilnahme schneller veränderten, als sie in der PhenoNetz-Studie erhoben wurden"
     )
-  formulation_temp <- NULL
+  formulation_temp <- " "
 }
 
 

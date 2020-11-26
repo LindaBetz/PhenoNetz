@@ -6,7 +6,7 @@ library(qgraph)
 
 
 # ... function to compute model per person
-getPersonalizedModel <- function(df,  beepvar = "Questionnaire_of_Day",
+getPersonalizedModel <- function(df,  beepvar = "Query_of_Day",
                                  dayvar = "date_ESM", vars = final_vars) {
   tryCatch(
     expr = {
@@ -36,7 +36,7 @@ removeLinearTrends <- function(df) {
       df[, Vars[v]][!is.na(df[, Vars[v]])] <- residuals(lmResult)
     }
   }
-  return(df)
+  return(as_tibble(df))
 }
 # load data
 data <- Questionnaire_Items_2020_04_02_16_02_06
