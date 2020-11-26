@@ -1,41 +1,17 @@
----
-title: "PhenoNetz-Ergebnisse"
-fontsize: 8 pt
-output:
-  beamer_presentation: default
-  slidy_presentation: default
-colortheme: dolphin
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
-```
-
-```{r, include=FALSE}
-# This code chunk simply makes sure that all the libraries used here are installed
-packages <- c("tidyverse", "psychonetrics", "qgraph", "scales")
-if (length(missing_pkgs <-
-           setdiff(packages, rownames(installed.packages()))) > 0) {
-  message("Installing missing package(s): ",
-          paste(missing_pkgs, collapse = ", "))
-  install.packages(missing_pkgs)
-}
-
-set.seed(1)
 
 library(tidyverse)
 library(psychonetrics)
 library(qgraph)
 library(scales)
 
-alpha <- .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
-ID <- 2
 
+alpha <- .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
+ID <- 3
 
 # ... function to compute model per person
 getPersonalizedModel <-
   function(df,
-           beepvar = "Query_of_Day",
+           beepvar = "Questionnaire_of_Day",
            dayvar = "date_ESM",
            vars = final_vars) {
     tryCatch(
@@ -219,9 +195,7 @@ start_sentence <- c(
   "Je gestresster Sie sich fühlten, ",
   "Je zufriedener Sie mit sich waren, ",
   "Je ängstlicher Sie sich fühlten, ",
-  "Je schwerer es Ihnen fiel, sich zu Dingen zu motivieren, ",
-  "Je misstrauischer Sie gegenüber anderen Menschen waren, ",
-  "Je mehr Sie grübelten, "
+  "Je schwerer es Ihnen fiel, sich zu Dingen zu motivieren, "
 )
 
 end_sentence <-
@@ -233,9 +207,7 @@ end_sentence <-
     "desto gestresster fühlten Sie sich zur selben Zeit",
     "desto zufriedener waren Sie mit sich zur selben Zeit",
     "desto ängstlicher fühlten Sie sich zur selben Zeit",
-    "desto schwieriger fiel es Ihnen, sich zu Dingen zu motivieren",
-    "desto misstrauischer waren Sie gegenüber anderen Menschen",
-    "desto mehr grübelten Sie"
+    "desto schwieriger fiel es Ihnen, sich zu Dingen zu motivieren"
   )
 
 formulation_contemp <-
@@ -246,8 +218,6 @@ most_central_item <-
 
 # temporal network
 temporal_network <- getmatrix(model_personalized, "PDC")
-temporal_network[is.nan(temporal_network)] <- 0
-temporal_network[is.infinite(temporal_network)] <- 0
 
 if (sum(temporal_network) > 0) {
   strongest_connection_temp <-
@@ -277,9 +247,7 @@ if (sum(temporal_network) > 0) {
     "Je gestresster Sie sich fühlten, ",
     "Je zufriedener Sie mit sich waren, ",
     "Je ängstlicher Sie sich fühlten, ",
-    "Je schwerer es Ihnen fiel, sich zu Dingen zu motivieren, ",
-    "Je misstrauischer Sie gegenüber anderen Menschen waren, ",
-    "Je mehr Sie grübelten, "
+    "Je schwerer es Ihnen fiel, sich zu Dingen zu motivieren, "
   )
   
   end_sentence <-
@@ -291,9 +259,7 @@ if (sum(temporal_network) > 0) {
       "desto gestresster fühlten Sie sich 3 Stunden später",
       "desto zufriedener waren Sie mit sich 3 Stunden später",
       "desto ängstlicher fühlten Sie sich 3 Stunden später",
-      "desto schwieriger fiel es Ihnen 3 Stunden später, sich zu Dingen zu motivieren",
-       "desto misstrauischer waren Sie 3 Stunden später gegenüber anderen Menschen",
-      "desto mehr grübelten Sie 3 Stunden später"
+      "desto schwieriger fiel es Ihnen 3 Stunden später, sich zu Dingen zu motivieren"
     )
   
   formulation_temp <-
@@ -303,107 +269,5 @@ if (sum(temporal_network) > 0) {
     c(
       "Bei Ihnen zeigten sich über die Zeit keine Zusammenhänge zwischen den Erlebnissen. Dies kann daran liegen, dass sich bei Ihnen die Erlebnisse während der zwei Wochen der Teilnahme schneller veränderten, als sie in der PhenoNetz-Studie erhoben wurden"
     )
-  formulation_temp <- " "
+  formulation_temp <- " " 
 }
-
-
-```
-
-## PhenoNetz
-Im Rahmen der PhenoNetz-Studie haben Sie fünfmal täglich über einen Zeitraum von zwei Wochen die folgenden Fragen auf Ihrem Smartphone in der "InsightsApp" beantwortet:
-
-
-- Ich bin traurig
-- Ich nehme Dinge wahr, die andere Menschen nicht wahrnehmen können
-- Ich habe Schwierigkeiten, mich zu konzentrieren
-- Ich bin kontaktfreudig
-- Ich fühle mich gestresst
-- Ich bin zufrieden mit mir 
-- Ich fühle mich ängstlich
-- Es fällt mir schwer, mich zu Dingen zu motivieren
-- Ich bin misstrauisch gegenüber anderen Menschen
-- Ich grüble
-
-
-![](insights_logo.png){width=30%}
-
-## Durchschnittliche Ausprägung der Erlebnisse
-Hier zeigen wir Ihnen die durchschnittliche Stärke, mit der Sie einzelne Erlebnisse berichtet haben:
-````{r}
-severity_plot
-```
-
-## Erlebnisse über die Zeit
-Hier zeigen wir Ihnen, wie sich Erlebnisse über die Zeit der PhenoNetz-Studie bei Ihnen verändert haben:
-
-````{r}
-fluctuation_plot
-```
-
-## PhenoNetzwerke
-Auf den folgenden zwei Folien zeigen wir Ihnen Ihre persönlichen Netzwerke, die aus den Daten, die Sie über zwei Wochen in die "InsightsApp" eingegeben haben, erstellt wurden. Bei der Darstellung dieser Netzwerke gilt Folgendes:
-
-- Jedes der zehn Erlebnisse wird durch einen eigenen Kreis dargestellt.
-- Blaue Linien zwischen den Kreisen zeigen positive Zusammenhänge. Das heißt, zwei so verbundene Erlebnisse verstärken sich im Schnitt gegenseitig.
-- Rote Linien zwischen den Kreisen zeigen negative Zusammenhänge. Das heißt, zwei so verbundene Erlebnisse hemmen sich im Schnitt gegenseitig.
-- Je dicker die Linie, desto stärker die Verstärkung bzw. die Hemmung.
-- Falls es keine Linie zwischen zwei Kreisen gibt, haben diese Erlebnisse keinen oder nur einen sehr geringen Einfluss aufeinander.
-
-## Netzwerk 1: Wie Ihre Erlebnisse zusammenhängen
-Dieses Netzwerk zeigt, welche Erlebnisse wie zu einem Zeitpunkt der Studie im Schnitt in Beziehung zueinander standen. Der zentrale Faktor in Ihrem Netzwerk ist `r most_central_item`. Dieser Faktor verstärkte bzw. hemmte andere Faktoren im Netzwerk am meisten. Der insgesamt stärkste Zusammenhang zeigte sich zwischen `r strongest_connection_contemp [1]` und `r strongest_connection_contemp [2]`. `r formulation_contemp`.
-```{r}
-qgraph::qgraph(
-  contemporaneous_network,
-  theme = "Borkulo",
-  layout="spring",
-  cut = 0,
-  maximum = 0.5,
-  labels = 1:10,
-  layoutOffset = c(-0.05, 0),
-  nodeNames = label_vars,
-  label.cex = 1.75,
-  legend.cex = 0.75,
-  layoutScale = c(0.8, 0.8),
-  GLratio = 1,
-  vsize = 5,
-  edge.width = 1,
-  mar =  c(5,3,3,3)
-)
-```
-
-
-
-## Netzwerk 2: Wie sich Ihre Erlebnisse über die Zeit vorhersagen
-Dieses Netzwerk zeigt, wie sich Ihre Erlebnisse im Schnitt von einem Zeitpunkt zum nächsten Zeitpunkt (ca. 3 Stunden später) vorhersagten. `r formulation_temp_strongest`. `r formulation_temp`
-```{r}
-qgraph::qgraph(
-  temporal_network,
-  theme = "Borkulo",
-  layout="spring",
-  cut = 0,
-  maximum = 0.5,
-  labels = 1:10,
-  layoutOffset = c(-0.05, 0),
-  nodeNames = label_vars,
-  label.cex = 1.75,
-  legend.cex = 0.75,
-  layoutScale = c(0.8, 0.8),
-  GLratio = 1,
-  vsize = 5,
-  edge.width = 1,
-  mar = c(5,3,3,3)
-)
-```
-
-## Bitte beachten Sie:
-- Die Netzwerke, die wir Ihnen vorgestellt haben, sind vorläufig und basieren auf Daten aus den zwei Wochen, in denen Sie an der PhenoNetz-Studie teilgenommen haben. Diese zwei Wochen sind unter Umständen nicht mit Ihrem regelmäßigen Alltag vergleichbar (z.B. weil es ggf. außergewöhnliche Ereignisse in Ihrem Leben gab). 
-- Es gibt bisher in der Forschung noch keine genaue Übereinstimmung darüber, wie man Netzwerk-Strukturen interpretieren sollte.
-- Keinesfalls ersetzen die Netzwerke eine psychologische Beratung oder Behandlung. 
-- Viele verschiedene Faktoren können das Aussehen der Netzwerke beeinflussen, z.B. welche Erlebnisse erfasst wurden, wie oft sie erhoben wurden, und wie oft diese Erlebnisse für Sie schwankten.
-
-Falls Sie weitere Fragen zur PhenoNetz-Studie oder Ihren Ergebnissen haben, wenden Sie sich gerne an:
-
-- Dr. Marlene Rosen (marlene.rosen@uk-koeln.de)
-- Linda Betz, MSc. (linda.betz@uk-koeln.de)
-
-Vielen herzlichen Dank für Ihre Teilnahme!
