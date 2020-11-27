@@ -46,9 +46,7 @@ getPersonalizedModel <-
           beta = "empty",
           beepvar = beepvar,
           dayvar = dayvar, 
-          verbose = TRUE,
-          standardize="z"
-          
+          verbose = TRUE
           
         )  %>% runmodel %>% prune(alpha = alpha, recursive = F)
         return(model_pruned)
