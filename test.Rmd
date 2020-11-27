@@ -44,11 +44,12 @@ getPersonalizedModel <-
           df,
           vars = vars,
           beta = "full",
+          omega_zeta = "full",
           beepvar = beepvar,
           dayvar = dayvar, 
           verbose = TRUE
           
-        )  %>% runmodel %>% runmodel %>% prune(alpha = alpha, recursive = F) %>% stepup(alpha = alpha)
+        )  %>% runmodel %>% prune(alpha = alpha, recursive = F) %>% stepup(alpha = alpha)
         return(model_pruned)
       },
       error = function(e) {
@@ -126,7 +127,7 @@ model_personalized <- data %>%
   ) %>%
   mutate(Diff_Time = difftime(DateTime, Ref_Time,  units = "mins")) %>%
   mutate(Query_of_Day = ifelse(Diff_Time > 60, NA, Query_of_Day)) %>%
-  rename_at(vars(matches("-1-0")), ~ final_vars) %>%
+   rename_at(vars(matches("-1-0")), ~ final_vars) %>%
   mutate(across(matches("var_"), function(x)
     ifelse(is.na(Query_of_Day), NA, x))) %>%
   select(-c(Timestamp, Lead_Day, Ref_Time, Diff_Time)) %>%
@@ -194,7 +195,7 @@ fluctuation_plot <- data %>%
   ) +
   scale_color_viridis_d() +
   scale_y_continuous(limits = c(-10,100), breaks = c(0,25,50,75,100)) +
-  scale_x_datetime(breaks =  date_breaks("3 days"), labels = date_format("%d.%m."))
+  scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))
 
 # contemporaneous network
 contemporaneous_network <-
@@ -242,7 +243,7 @@ formulation_contemp <-
   paste0(start_sentence[contemp_nodes[1]], end_sentence[contemp_nodes[2]])
 
 most_central_item <-
-  paste0("'", label_vars[centralityTable(contemporaneous_network) %>% filter(measure == "Strength") %>% top_n(1, value) %>% select(node) %>% as.numeric], "'")
+  paste0("'", label_vars[centralityTable(contemporaneous_network) %>% filter(measure == "Strength") %>% arrange(-value) %>% select(node) %>% .[1,] %>% as.numeric], "'")
 
 # temporal network
 temporal_network <- getmatrix(model_personalized, "PDC")
