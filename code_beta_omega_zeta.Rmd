@@ -2,6 +2,7 @@
 title: "PhenoNetz-Ergebnisse"
 fontsize: 8 pt
 output:
+  ioslides_presentation: default
   beamer_presentation: default
   slidy_presentation: default
 colortheme: dolphin
@@ -30,7 +31,7 @@ library(scales)
 
 alpha <-
   .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
-ID <- 5
+ID <- 7
 
 
 # ... function to compute model per person
@@ -134,7 +135,7 @@ model_personalized <- data %>%
   select(-c(Timestamp, Lead_Day, Ref_Time, Diff_Time)) %>%
   mutate_at(vars(final_vars), scale) %>%
   removeLinearTrends() %>%
-  mutate_at(vars(final_vars), scale) %>%
+  #mutate_at(vars(final_vars), scale) %>%
   getPersonalizedModel()
 
 # strength of experiences
@@ -212,7 +213,7 @@ strongest_connection_contemp[2] <-
   paste0("'", strongest_connection_contemp[2], "'")
 
 contemp_nodes <-
-  which(contemporaneous_network == max(abs(contemporaneous_network)),
+  which(abs(contemporaneous_network) == max(abs(contemporaneous_network)),
         arr.ind = TRUE)[, 1]
 
 start_sentence <- c(
@@ -260,9 +261,8 @@ end_sentence_negative <-
 
 formulation_contemp <-
   ifelse(
-    contemporaneous_network[contemporaneous_network >= max(abs(contemporaneous_network))][1] > 0,
-    paste0(start_sentence[contemp_nodes[1]], end_sentence_positive[contemp_nodes[2]]),
-    paste0(start_sentence[contemp_nodes[1]], end_sentence_negatice[contemp_nodes[2]])
+    contemporaneous_network[abs(contemporaneous_network) >= max(abs(contemporaneous_network))][1] > 0,
+    paste0(start_sentence[contemp_nodes[1]],end_sentence_positive[contemp_nodes[2]]), paste0(start_sentence[contemp_nodes[1]],end_sentence_negative[contemp_nodes[2]])
   )
 
 most_central_item <-
@@ -314,12 +314,12 @@ if (sum(abs(temporal_network)) > 0) {
       "desto gestresster fühlten Sie sich 3 Stunden später",
       "desto zufriedener waren Sie mit sich 3 Stunden später",
       "desto ängstlicher fühlten Sie sich 3 Stunden später",
-      "desto schwieriger fiel es Ihnen 3 Stunden später, sich zu Dingen zu motivieren",
+      "desto schwerer fiel es Ihnen 3 Stunden später, sich zu Dingen zu motivieren",
       "desto misstrauischer waren Sie 3 Stunden später gegenüber anderen Menschen",
       "desto mehr grübelten Sie 3 Stunden später"
     )
   
-  end_sentence_positive <-
+  end_sentence_negative <-
     c(
       "desto weniger traurig fühlten Sie sich 3 Stunden später",
       "desto weniger hatten Sie 3 Stunden später das Gefühl, Dinge wahrzunehmen, die andere Menschen nicht wahrnehmen können",
@@ -328,7 +328,7 @@ if (sum(abs(temporal_network)) > 0) {
       "desto weniger gestresst fühlten Sie sich 3 Stunden später",
       "desto weniger zufrieden waren Sie mit sich 3 Stunden später",
       "desto weniger ängstlich fühlten Sie sich 3 Stunden später",
-      "desto weniger schwierig fiel es Ihnen 3 Stunden später, sich zu Dingen zu motivieren",
+      "desto weniger schwer fiel es Ihnen 3 Stunden später, sich zu Dingen zu motivieren",
       "desto weniger misstrauisch waren Sie 3 Stunden später gegenüber anderen Menschen",
       "desto weniger grübelten Sie 3 Stunden später"
     )
@@ -336,8 +336,7 @@ if (sum(abs(temporal_network)) > 0) {
   formulation_temp <-
     ifelse(
       temporal_network[abs(temporal_network) >= max(abs(temporal_network))][1] > 0,
-      paste0(start_sentence[temp_nodes[1]], end_sentence_positive[temp_nodes[2]], "."),
-      paste0(start_sentence[temp_nodes[1]], end_sentence_negative[temp_nodes[2]], ".")
+      paste0(start_sentence[temp_nodes[1]],end_sentence_positive[temp_nodes[2]], "."), paste0(start_sentence[temp_nodes[1]],end_sentence_negative[temp_nodes[2]], ".")
     )
 } else {
   formulation_temp_strongest <-
@@ -415,7 +414,7 @@ qgraph::qgraph(
 
 
 ## Netzwerk 2: Wie sich Ihre Erlebnisse über die Zeit vorhersagen
-Dieses Netzwerk zeigt, wie sich Ihre Erlebnisse im Schnitt von einem Zeitpunkt zum nächsten Zeitpunkt (ca. 3 Stunden später) vorhersagten. `r formulation_temp_strongest`. `r formulation_temp`
+Dieses Netzwerk zeigt, wie sich Ihre Erlebnisse im Schnitt von einem Zeitpunkt zum nächsten Zeitpunkt (ca. 3 Stunden später) vorhersagten.`r formulation_temp_strongest`. `r formulation_temp`
 ```{r}
 qgraph::qgraph(
   temporal_network,

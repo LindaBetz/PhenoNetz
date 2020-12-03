@@ -6,7 +6,7 @@ library(qgraph)
 library(scales)
 
 alpha <- .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
-ID <- 5
+ID <- 7
 
 
 # ... function to compute model per person
@@ -110,7 +110,7 @@ model_personalized <- data %>%
   select(-c(Timestamp, Lead_Day, Ref_Time, Diff_Time)) %>%
   mutate_at(vars(final_vars), scale) %>%
   removeLinearTrends() %>%
-  mutate_at(vars(final_vars), scale) %>%
+  #mutate_at(vars(final_vars), scale) %>%
   getPersonalizedModel()
 
 # strength of experiences
@@ -186,7 +186,7 @@ strongest_connection_contemp[2] <-
   paste0("'", strongest_connection_contemp[2], "'")
 
 contemp_nodes <-
-  which(contemporaneous_network == max(abs(contemporaneous_network)),
+  which(abs(contemporaneous_network) == max(abs(contemporaneous_network)),
         arr.ind = TRUE)[, 1]
 
 start_sentence <- c(
@@ -233,7 +233,7 @@ end_sentence_negative <-
 
 
 formulation_contemp <-
-  ifelse(contemporaneous_network[contemporaneous_network >= max(abs(contemporaneous_network))][1] > 0, paste0(start_sentence[contemp_nodes[1]], end_sentence_positive[contemp_nodes[2]]), paste0(start_sentence[contemp_nodes[1]], end_sentence_negatice[contemp_nodes[2]]))
+  ifelse(contemporaneous_network[abs(contemporaneous_network) >= max(abs(contemporaneous_network))][1] > 0, paste0(start_sentence[contemp_nodes[1]], end_sentence_positive[contemp_nodes[2]]), paste0(start_sentence[contemp_nodes[1]], end_sentence_negatice[contemp_nodes[2]]))
 
 most_central_item <-
   paste0("'", label_vars[centralityTable(contemporaneous_network) %>% filter(measure == "Strength") %>% arrange(-value) %>% select(node) %>% .[1,] %>% as.numeric], "'")

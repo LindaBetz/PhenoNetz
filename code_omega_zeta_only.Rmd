@@ -29,7 +29,7 @@ library(qgraph)
 library(scales)
 
 alpha <- .05 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
-ID <- 4
+ID <- 6
 
 
 # ... function to compute model per person
