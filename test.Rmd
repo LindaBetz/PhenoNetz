@@ -20,16 +20,13 @@ if (length(missing_pkgs <-
           paste(missing_pkgs, collapse = ", "))
   install.packages(missing_pkgs)
 }
-
-set.seed(1)
-
 library(tidyverse)
 library(psychonetrics)
 library(qgraph)
 library(scales)
 
-alpha <- .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
-ID <- 2
+alpha <- .05 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
+ID <- 3
 
 
 # ... function to compute model per person
@@ -47,7 +44,8 @@ getPersonalizedModel <-
           omega_zeta = "full",
           beepvar = beepvar,
           dayvar = dayvar, 
-          verbose = TRUE
+          verbose = TRUE,
+          estimator = "FIML"
           
         )  %>% runmodel %>% prune(alpha = alpha, recursive = F) %>% stepup(alpha = alpha)
         return(model_pruned)
@@ -71,7 +69,25 @@ removeLinearTrends <- function(df) {
   return(as_tibble(df))
 }
 # load data
-Questionnaire_Abfrage <- read_csv("Questionnaire_Abfrage.csv")
+Questionnaire_Abfrage <- read_csv2("Questionnaire_Abfrage.csv", col_types = cols(
+  Participant_ID = col_double(),
+  Study_Day = col_character(),
+  Timestamp = col_double(),
+  DateTime = col_datetime(format = "%d.%m.%y %H:%M"),
+  Questionnaire_of_Day = col_double(),
+  `1_1_1` = col_double(),
+  `2_1_1` = col_double(),
+  `3_1_1` = col_double(),
+  `4_1_1` = col_double(),
+  `5_1_1` = col_double(),
+  `6_1_1` = col_double(),
+  `7_1_1` = col_double(),
+  `8_1_1` = col_double(),
+  `9_1_1` = col_double(),
+  `10_1_1` = col_double()
+)
+)
+
 data <- Questionnaire_Abfrage
 label_vars = c(
   "Ich bin traurig",
@@ -88,13 +104,14 @@ label_vars = c(
 
 final_vars <- Vars <- paste0("var_", c(as.character(1:10)))
 
+
 model_personalized <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
   filter(Participant_ID == ID) %>%
   mutate(
     Day_Study = date_ESM - .$date_ESM[1] + 1,
-    DateTime = str_replace(DateTime, "UTC", "CET"),
+    #DateTime = str_replace(DateTime, "UTC", "CET"),
     Query_of_Day = case_when(
       as.POSIXct(paste(date_ESM, "08:30:00")) <= DateTime &
         as.POSIXct(paste(date_ESM, "10:30:00")) >= DateTime ~ 1,
@@ -127,13 +144,13 @@ model_personalized <- data %>%
   ) %>%
   mutate(Diff_Time = difftime(DateTime, Ref_Time,  units = "mins")) %>%
   mutate(Query_of_Day = ifelse(Diff_Time > 60, NA, Query_of_Day)) %>%
-   rename_at(vars(matches("-1-0")), ~ final_vars) %>%
+  rename_at(vars(matches("_1_1")), ~ final_vars) %>%
   mutate(across(matches("var_"), function(x)
     ifelse(is.na(Query_of_Day), NA, x))) %>%
   select(-c(Timestamp, Lead_Day, Ref_Time, Diff_Time)) %>%
   mutate_at(vars(final_vars), scale) %>%
   removeLinearTrends() %>%
-  mutate_at(vars(final_vars), scale) %>%
+  # mutate_at(vars(final_vars), scale) %>%
   getPersonalizedModel()
 
 # strength of experiences
@@ -141,7 +158,7 @@ severity_plot <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
   filter(Participant_ID == ID) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  rename_at(vars(matches("1_1")), ~ label_vars) %>%
   select(label_vars) %>%
   summarise_all(mean) %>%
   pivot_longer(cols = everything(),
@@ -165,7 +182,7 @@ most_variable_items <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
   filter(Participant_ID == ID) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  rename_at(vars(matches("1_1")), ~ label_vars) %>%
   select(label_vars) %>%
   summarise_all(sd) %>%
   pivot_longer(cols = everything(),
@@ -177,7 +194,7 @@ fluctuation_plot <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
   filter(Participant_ID == ID) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  rename_at(vars(matches("1_1")), ~ label_vars) %>%
   select(most_variable_items$Erlebnis, time_ESM) %>%
   pivot_longer(cols = most_variable_items$Erlebnis,
                names_to = "Erlebnis",
@@ -293,7 +310,7 @@ if (sum(temporal_network) > 0) {
       "desto zufriedener waren Sie mit sich 3 Stunden später",
       "desto ängstlicher fühlten Sie sich 3 Stunden später",
       "desto schwieriger fiel es Ihnen 3 Stunden später, sich zu Dingen zu motivieren",
-       "desto misstrauischer waren Sie 3 Stunden später gegenüber anderen Menschen",
+      "desto misstrauischer waren Sie 3 Stunden später gegenüber anderen Menschen",
       "desto mehr grübelten Sie 3 Stunden später"
     )
   
