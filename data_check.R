@@ -5,7 +5,7 @@ library(qgraph)
 library(scales)
 alpha <-
   .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
-ID <- 7
+ID <- 15
 # ... function to compute model per person
 getPersonalizedModel <-
   function(df,
@@ -61,7 +61,8 @@ label_vars = c(
   "Ich grüble"
 )
 final_vars <- Vars <- paste0("var_", c(as.character(1:10)))
-model_personalized <- data %>%
+
+check_data <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
   filter(Participant_ID == ID) %>%
@@ -103,68 +104,12 @@ model_personalized <- data %>%
   rename_at(vars(matches("-1-0")), ~ final_vars) %>%
   mutate(across(matches("var_"), function(x)
     ifelse(is.na(Query_of_Day), NA, x))) %>%
-  select(-c(Timestamp, Lead_Day, Ref_Time, Diff_Time)) %>%
-  mutate_at(vars(final_vars), scale) %>%
-  removeLinearTrends() %>%
+  select(-c(Timestamp, Lead_Day, Ref_Time, Diff_Time))
+
+message(paste0("missing: ", sum(is.na(check_data$var_1))/nrow(check_data)))
+
+View(check_data)
+ # mutate_at(vars(final_vars), scale) %>%
+  #removeLinearTrends() %>%
   #mutate_at(vars(final_vars), scale) %>%
-  getPersonalizedModel()
-# strength of experiences
-severity_plot <- data %>%
-  mutate(date_ESM = as.Date(DateTime),
-         time_ESM = DateTime) %>%
-  filter(Participant_ID == ID) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
-  select(label_vars) %>%
-  summarise_all(mean) %>%
-  pivot_longer(cols = everything(),
-               names_to = "Erlebnis",
-               values_to = "Wert") %>%
-  mutate(Erlebnis = reorder(Erlebnis, Wert)) %>%
-  ggplot(., aes(x = Erlebnis, y = Wert, fill = Erlebnis)) +
-  geom_bar(stat = "identity") +
-  xlab("") +
-  ylab("\n Durchschnittliche Stärke (%)") +
-  coord_flip() + theme_classic() +
-  theme(
-    legend.position  = "none",
-    axis.title = element_text(size = 14, colour = "black"),
-    axis.text = element_text(size = 14, color = "black")
-  ) +
-  scale_fill_viridis_d()
-# fluctuation of experiences
-most_variable_items <- data %>%
-  mutate(date_ESM = as.Date(DateTime),
-         time_ESM = DateTime) %>%
-  filter(Participant_ID == ID) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
-  select(label_vars) %>%
-  summarise_all(sd) %>%
-  pivot_longer(cols = everything(),
-               names_to = "Erlebnis",
-               values_to = "Wert") %>%
-  top_n(3, Wert)
-fluctuation_plot <- data %>%
-  mutate(date_ESM = as.Date(DateTime),
-         time_ESM = DateTime) %>%
-  filter(Participant_ID == ID) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
-  select(most_variable_items$Erlebnis, time_ESM) %>%
-  pivot_longer(cols = most_variable_items$Erlebnis,
-               names_to = "Erlebnis",
-               values_to = "Wert") %>%
-  ggplot(., aes(x = time_ESM, y = Wert, color = Erlebnis)) + facet_wrap(~
-                                                                          Erlebnis, ncol = 1) +  geom_line(size =
-                                                                                                             1) +
-  geom_smooth(method = "loess", formula = y ~ x) +
-  theme_classic() +
-  xlab("\n Datum") +
-  theme(
-    legend.position  = "none",
-    strip.text = element_text(size = 14, colour = "black"),
-    axis.title = element_text(size = 14, colour = "black"),
-    axis.text = element_text(size = 14, colour = "black")
-  ) +
-  scale_color_viridis_d() +
-  scale_y_continuous(limits = c(-10, 100),
-                     breaks = c(0, 25, 50, 75, 100)) +
-  scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))
+ # getPersonalizedModel()

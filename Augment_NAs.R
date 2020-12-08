@@ -3,7 +3,7 @@ data <- Questionnaire_Abfrage
 out <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
-  filter(Participant_ID == 2) %>%
+  filter(Participant_ID == 3) %>%
   mutate(
     Day_Study = date_ESM - .$date_ESM[1] + 1,
     DateTime = str_replace(DateTime, "UTC", "CET"),
