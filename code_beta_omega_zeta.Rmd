@@ -2,8 +2,8 @@
 title: "PhenoNetz-Ergebnisse"
 fontsize: 8 pt
 output:
-  ioslides_presentation: default
   beamer_presentation: default
+  ioslides_presentation: default
   slidy_presentation: default
 colortheme: dolphin
 ---
@@ -21,19 +21,14 @@ if (length(missing_pkgs <-
           paste(missing_pkgs, collapse = ", "))
   install.packages(missing_pkgs)
 }
-
 set.seed(1)
-
 library(tidyverse)
 library(psychonetrics)
 library(qgraph)
 library(scales)
-
 alpha <-
   .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
 ID <- 7
-
-
 # ... function to compute model per person
 getPersonalizedModel <-
   function(df,
@@ -49,7 +44,9 @@ getPersonalizedModel <-
           omega_zeta = "full",
           beepvar = beepvar,
           dayvar = dayvar,
-          verbose = TRUE
+          verbose = TRUE,
+          estimator = "FIML"
+
           
         )  %>% runmodel %>% prune(alpha = alpha, recursive = F) %>% stepup(alpha = alpha)
         return(model_pruned)
@@ -60,7 +57,6 @@ getPersonalizedModel <-
       }
     )
   }
-
 # ... function to check and remove linear trends
 removeLinearTrends <- function(df) {
   df <- as.data.frame(df)
@@ -87,9 +83,7 @@ label_vars = c(
   "Ich bin misstrauisch \n    gegenüber anderen Menschen",
   "Ich grüble"
 )
-
 final_vars <- Vars <- paste0("var_", c(as.character(1:10)))
-
 model_personalized <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
@@ -137,7 +131,6 @@ model_personalized <- data %>%
   removeLinearTrends() %>%
   #mutate_at(vars(final_vars), scale) %>%
   getPersonalizedModel()
-
 # strength of experiences
 severity_plot <- data %>%
   mutate(date_ESM = as.Date(DateTime),
@@ -161,7 +154,6 @@ severity_plot <- data %>%
     axis.text = element_text(size = 14, color = "black")
   ) +
   scale_fill_viridis_d()
-
 # fluctuation of experiences
 most_variable_items <- data %>%
   mutate(date_ESM = as.Date(DateTime),
@@ -174,7 +166,6 @@ most_variable_items <- data %>%
                names_to = "Erlebnis",
                values_to = "Wert") %>%
   top_n(3, Wert)
-
 fluctuation_plot <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
@@ -200,7 +191,6 @@ fluctuation_plot <- data %>%
   scale_y_continuous(limits = c(-10, 100),
                      breaks = c(0, 25, 50, 75, 100)) +
   scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))
-
 # contemporaneous network
 contemporaneous_network <-
   getmatrix(model_personalized, "omega_zeta")
@@ -211,11 +201,9 @@ strongest_connection_contemp[1] <-
   paste0("'", strongest_connection_contemp[1], "'")
 strongest_connection_contemp[2] <-
   paste0("'", strongest_connection_contemp[2], "'")
-
 contemp_nodes <-
   which(abs(contemporaneous_network) == max(abs(contemporaneous_network)),
         arr.ind = TRUE)[, 1]
-
 start_sentence <- c(
   "Je trauriger Sie sich fühlten, ",
   "Je mehr Sie das Gefühl hatten, Dinge wahrzunehmen, die andere Menschen nicht wahrnehmen können, ",
@@ -228,7 +216,6 @@ start_sentence <- c(
   "Je misstrauischer Sie gegenüber anderen Menschen waren, ",
   "Je mehr Sie grübelten, "
 )
-
 end_sentence_positive <-
   c(
     "desto trauriger fühlten Sie sich zur selben Zeit",
@@ -242,8 +229,6 @@ end_sentence_positive <-
     "desto misstrauischer waren Sie gegenüber anderen Menschen",
     "desto mehr grübelten Sie"
   )
-
-
 end_sentence_negative <-
   c(
     "desto weniger traurig fühlten Sie sich zur selben Zeit",
@@ -257,22 +242,17 @@ end_sentence_negative <-
     "desto weniger misstrauisch waren Sie gegenüber anderen Menschen",
     "desto weniger grübelten Sie"
   )
-
-
 formulation_contemp <-
   ifelse(
     contemporaneous_network[abs(contemporaneous_network) >= max(abs(contemporaneous_network))][1] > 0,
     paste0(start_sentence[contemp_nodes[1]],end_sentence_positive[contemp_nodes[2]]), paste0(start_sentence[contemp_nodes[1]],end_sentence_negative[contemp_nodes[2]])
   )
-
 most_central_item <-
   paste0("'", label_vars[centralityTable(contemporaneous_network) %>% filter(measure == "Strength") %>% arrange(-value) %>% select(node) %>% .[1, ] %>% as.numeric], "'")
-
 # temporal network
 temporal_network <- getmatrix(model_personalized, "PDC")
 temporal_network[is.nan(temporal_network)] <- 0
 temporal_network[is.infinite(temporal_network)] <- 0
-
 if (sum(abs(temporal_network)) > 0) {
   strongest_connection_temp <-
     label_vars[which(abs(temporal_network) == max(abs(temporal_network)), arr.ind = TRUE)]
@@ -335,8 +315,10 @@ if (sum(abs(temporal_network)) > 0) {
   
   formulation_temp <-
     ifelse(
-      temporal_network[abs(temporal_network) >= max(abs(temporal_network))][1] > 0,
-      paste0(start_sentence[temp_nodes[1]],end_sentence_positive[temp_nodes[2]], "."), paste0(start_sentence[temp_nodes[1]],end_sentence_negative[temp_nodes[2]], ".")
+      temporal_network[abs(temporal_network) >= max(abs(temporal_network))][1] > 0, 
+      paste0(start_sentence[temp_nodes[1]],
+             end_sentence_positive[temp_nodes[2]], "."), paste0(start_sentence[temp_nodes[1]],
+                                                                end_sentence_negative[temp_nodes[2]], ".")
     )
 } else {
   formulation_temp_strongest <-
@@ -345,8 +327,6 @@ if (sum(abs(temporal_network)) > 0) {
     )
   formulation_temp <- " "
 }
-
-
 ```
 
 ## PhenoNetz
@@ -374,8 +354,7 @@ severity_plot
 ```
 
 ## Erlebnisse über die Zeit
-Hier zeigen wir Ihnen, wie sich Erlebnisse über die Zeit der PhenoNetz-Studie bei Ihnen verändert haben:
-
+Hier zeigen wir, wie sich Erlebnisse über die Zeit der PhenoNetz-Studie bei Ihnen verändert haben:
 ````{r}
 fluctuation_plot
 ```
@@ -390,7 +369,10 @@ Auf den folgenden zwei Folien zeigen wir Ihnen Ihre persönlichen Netzwerke, die
 - Falls es keine Linie zwischen zwei Kreisen gibt, haben diese Erlebnisse keinen oder nur einen sehr geringen Einfluss aufeinander.
 
 ## Netzwerk 1: Wie Ihre Erlebnisse zusammenhängen
-Dieses Netzwerk zeigt, welche Erlebnisse wie zu einem Zeitpunkt der Studie im Schnitt in Beziehung zueinander standen. Der zentrale Faktor in Ihrem Netzwerk ist `r most_central_item`. Dieser Faktor verstärkte bzw. hemmte andere Faktoren im Netzwerk am meisten. Der insgesamt stärkste Zusammenhang zeigte sich zwischen `r strongest_connection_contemp [1]` und `r strongest_connection_contemp [2]`. `r formulation_contemp`.
+Dieses Netzwerk zeigt, welche Erlebnisse wie zu einem Zeitpunkt der Studie im Schnitt in Beziehung zueinander standen. 
+
+- Der zentrale Faktor in Ihrem Netzwerk ist `r most_central_item`. Dieser Faktor verstärkte bzw. hemmte andere Faktoren im Netzwerk am meisten. 
+- Der insgesamt stärkste Zusammenhang zeigte sich zwischen `r strongest_connection_contemp [1]` und `r strongest_connection_contemp [2]`. `r formulation_contemp`.
 ```{r}
 qgraph::qgraph(
   contemporaneous_network,
@@ -411,10 +393,10 @@ qgraph::qgraph(
 )
 ```
 
-
-
 ## Netzwerk 2: Wie sich Ihre Erlebnisse über die Zeit vorhersagen
-Dieses Netzwerk zeigt, wie sich Ihre Erlebnisse im Schnitt von einem Zeitpunkt zum nächsten Zeitpunkt (ca. 3 Stunden später) vorhersagten.`r formulation_temp_strongest`. `r formulation_temp`
+Dieses Netzwerk zeigt, wie sich Ihre Erlebnisse im Schnitt von einem Zeitpunkt zum nächsten Zeitpunkt (ca. 3 Stunden später) vorhersagten.
+
+- `r formulation_temp_strongest`. `r formulation_temp`
 ```{r}
 qgraph::qgraph(
   temporal_network,

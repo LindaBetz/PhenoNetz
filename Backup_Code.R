@@ -6,7 +6,7 @@ library(qgraph)
 library(scales)
 
 alpha <- .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
-ID <- 7
+ID <- 3
 
 
 # ... function to compute model per person
@@ -48,7 +48,7 @@ removeLinearTrends <- function(df) {
   return(as_tibble(df))
 }
 # load data
-Questionnaire_Abfrage <- read_csv("Questionnaire_Abfrage.csv")
+Questionnaire_Abfrage <- read_csv2("Questionnaire_Abfrage.csv")
 data <- Questionnaire_Abfrage
 label_vars = c(
   "Ich bin traurig",
@@ -65,8 +65,10 @@ label_vars = c(
 
 final_vars <- Vars <- paste0("var_", c(as.character(1:10)))
 
+data$DateTime <- as.Date(data$DateTime, format = "%d.%m.%y %H:%M")
+
 model_personalized <- data %>%
-  mutate(date_ESM = as.Date(DateTime),
+  mutate(date_ESM = as.Date(DateTime, format = "%d.%m.%y %H:%M"),
          time_ESM = DateTime) %>%
   filter(Participant_ID == ID) %>%
   mutate(
