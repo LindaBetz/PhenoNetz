@@ -3,9 +3,12 @@ library(tidyverse)
 library(psychonetrics)
 library(qgraph)
 library(scales)
+
 alpha <-
   .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
 ID <- 14
+
+
 # ... function to compute model per person
 getPersonalizedModel <-
   function(df,
@@ -108,8 +111,3 @@ check_data <- data %>%
 
 message(paste0("missing: ", sum(is.na(check_data$var_1))/nrow(check_data)))
 
-View(check_data)
- # mutate_at(vars(final_vars), scale) %>%
-  #removeLinearTrends() %>%
-  #mutate_at(vars(final_vars), scale) %>%
- # getPersonalizedModel()
