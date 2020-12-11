@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r, include=FALSE}
-# This code chunk simply makes sure that all the libraries used here are installed
+# This code chunk makes sure that all the libraries used here are installed
 packages <- c("tidyverse", "psychonetrics", "qgraph", "scales")
 if (length(missing_pkgs <-
            setdiff(packages, rownames(installed.packages()))) > 0) {
@@ -28,7 +28,7 @@ library(qgraph)
 library(scales)
 alpha <-
   .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
-ID <- 7
+ID <- 5
 # ... function to compute model per person
 getPersonalizedModel <-
   function(df,
@@ -48,7 +48,7 @@ getPersonalizedModel <-
           estimator = "FIML"
 
           
-        )  %>% runmodel %>% prune(alpha = alpha, recursive = F) %>% stepup(alpha = alpha)
+        )  %>% runmodel %>% prune(alpha = alpha, recursive = F, adjust = "none") %>% stepup(alpha = alpha)
         return(model_pruned)
       },
       error = function(e) {
@@ -426,6 +426,6 @@ qgraph::qgraph(
 Falls Sie weitere Fragen zur PhenoNetz-Studie oder Ihren Ergebnissen haben, wenden Sie sich gerne an:
 
 - Dr. Marlene Rosen (marlene.rosen@uk-koeln.de)
-- Linda Betz, MSc. (linda.betz@uk-koeln.de)
+- Linda Betz, M.Sc. (linda.betz@uk-koeln.de)
 
 Vielen herzlichen Dank für Ihre Teilnahme!

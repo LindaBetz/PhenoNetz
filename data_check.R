@@ -5,7 +5,7 @@ library(qgraph)
 library(scales)
 alpha <-
   .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
-ID <- 15
+ID <- 14
 # ... function to compute model per person
 getPersonalizedModel <-
   function(df,
