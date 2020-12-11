@@ -1,2 +1,2 @@
 # PhenoNetz
-Code to generate feedback slides for participants in "PhenoNetz"-study
+Code to generate feedback reports for participants in "PhenoNetz"-study
