@@ -3,9 +3,6 @@ title: "PhenoNetz-Ergebnisse"
 fontsize: 8 pt
 output:
   beamer_presentation: default
-  ioslides_presentation: default
-  slidy_presentation: default
-colortheme: dolphin
 ---
 
 ```{r setup, include=FALSE}
