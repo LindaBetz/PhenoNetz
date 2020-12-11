@@ -129,7 +129,7 @@ model_personalized <- data %>%
     )
   ) %>%
   mutate(Diff_Time = difftime(DateTime, Ref_Time,  units = "mins")) %>%
-  mutate(Query_of_Day = ifelse(Diff_Time > 60, NA, Query_of_Day)) %>%
+  mutate(Query_of_Day = ifelse(abs(Diff_Time) > 60, NA, Query_of_Day)) %>%
   rename_at(vars(matches("-1-0")), ~ final_vars) %>%
   mutate(across(matches("var_"), function(x)
     ifelse(is.na(Query_of_Day), NA, x))) %>%
