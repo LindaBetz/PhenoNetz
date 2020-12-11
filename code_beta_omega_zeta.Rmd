@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r, include=FALSE}
-# This code chunk makes sure that all the libraries used here are installed
+# makes sure that all the libraries used are installed
 packages <- c("tidyverse", "psychonetrics", "qgraph", "scales")
 if (length(missing_pkgs <-
            setdiff(packages, rownames(installed.packages()))) > 0) {
@@ -21,14 +21,19 @@ if (length(missing_pkgs <-
           paste(missing_pkgs, collapse = ", "))
   install.packages(missing_pkgs)
 }
+
 set.seed(1)
 library(tidyverse)
 library(psychonetrics)
 library(qgraph)
 library(scales)
+
+# some parameters to set:
 alpha <-
-  .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
-ID <- 5
+  .01 # significance level for thresholding in networks
+
+ID <- 5 # participant ID
+
 # ... function to compute model per person
 getPersonalizedModel <-
   function(df,
@@ -46,9 +51,9 @@ getPersonalizedModel <-
           dayvar = dayvar,
           verbose = TRUE,
           estimator = "FIML"
-
-          
-        )  %>% runmodel %>% prune(alpha = alpha, recursive = F, adjust = "none") %>% stepup(alpha = alpha)
+        )  %>% runmodel %>% prune(alpha = alpha,
+                                  recursive = F,
+                                  adjust = "none") %>% stepup(alpha = alpha)
         return(model_pruned)
       },
       error = function(e) {
@@ -57,6 +62,7 @@ getPersonalizedModel <-
       }
     )
   }
+
 # ... function to check and remove linear trends
 removeLinearTrends <- function(df) {
   df <- as.data.frame(df)
@@ -68,6 +74,7 @@ removeLinearTrends <- function(df) {
   }
   return(as_tibble(df))
 }
+
 # load data
 Questionnaire_Abfrage <- read_csv("Questionnaire_Abfrage.csv")
 data <- Questionnaire_Abfrage
@@ -83,7 +90,10 @@ label_vars = c(
   "Ich bin misstrauisch \n    gegenüber anderen Menschen",
   "Ich grüble"
 )
+
 final_vars <- Vars <- paste0("var_", c(as.character(1:10)))
+
+# compute individualized network models
 model_personalized <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
@@ -115,7 +125,7 @@ model_personalized <- data %>%
   mutate(
     Ref_Time = case_when(
       Query_of_Day == 1 ~ as.POSIXct(paste(date_ESM, "09:30:00")),
-      Query_of_Day == 2  ~  as.POSIXct(paste(date_ESM, "12:30:00")),
+      Query_of_Day == 2 ~ as.POSIXct(paste(date_ESM, "12:30:00")),
       Query_of_Day == 3 ~ as.POSIXct(paste(date_ESM, "15:30:00")),
       Query_of_Day == 4 ~ as.POSIXct(paste(date_ESM, "18:30:00")),
       Query_of_Day == 5 ~ as.POSIXct(paste(date_ESM, "21:30:00"))
@@ -129,9 +139,10 @@ model_personalized <- data %>%
   select(-c(Timestamp, Lead_Day, Ref_Time, Diff_Time)) %>%
   mutate_at(vars(final_vars), scale) %>%
   removeLinearTrends() %>%
-  #mutate_at(vars(final_vars), scale) %>%
   getPersonalizedModel()
-# strength of experiences
+
+
+# plot: strength of experiences
 severity_plot <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
@@ -154,7 +165,9 @@ severity_plot <- data %>%
     axis.text = element_text(size = 14, color = "black")
   ) +
   scale_fill_viridis_d()
-# fluctuation of experiences
+
+
+# plot: fluctuation of experiences
 most_variable_items <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
@@ -191,9 +204,12 @@ fluctuation_plot <- data %>%
   scale_y_continuous(limits = c(-10, 100),
                      breaks = c(0, 25, 50, 75, 100)) +
   scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))
+
 # contemporaneous network
 contemporaneous_network <-
   getmatrix(model_personalized, "omega_zeta")
+
+# get strongest connections contemporaneous network
 strongest_connection_contemp <-
   label_vars[which(abs(contemporaneous_network) == max(abs(contemporaneous_network)),
                    arr.ind = TRUE)[, 1]]
@@ -204,6 +220,8 @@ strongest_connection_contemp[2] <-
 contemp_nodes <-
   which(abs(contemporaneous_network) == max(abs(contemporaneous_network)),
         arr.ind = TRUE)[, 1]
+
+# feedback sentences contemporaneous network
 start_sentence <- c(
   "Je trauriger Sie sich fühlten, ",
   "Je mehr Sie das Gefühl hatten, Dinge wahrzunehmen, die andere Menschen nicht wahrnehmen können, ",
@@ -245,14 +263,22 @@ end_sentence_negative <-
 formulation_contemp <-
   ifelse(
     contemporaneous_network[abs(contemporaneous_network) >= max(abs(contemporaneous_network))][1] > 0,
-    paste0(start_sentence[contemp_nodes[1]],end_sentence_positive[contemp_nodes[2]]), paste0(start_sentence[contemp_nodes[1]],end_sentence_negative[contemp_nodes[2]])
+    paste0(start_sentence[contemp_nodes[1]], end_sentence_positive[contemp_nodes[2]]),
+    paste0(start_sentence[contemp_nodes[1]], end_sentence_negative[contemp_nodes[2]])
   )
 most_central_item <-
-  paste0("'", label_vars[centralityTable(contemporaneous_network) %>% filter(measure == "Strength") %>% arrange(-value) %>% select(node) %>% .[1, ] %>% as.numeric], "'")
+  paste0("'", label_vars[centralityTable(contemporaneous_network) %>% filter(measure == "Strength") %>%
+                           arrange(-value) %>%
+                           select(node) %>%
+                           .[1, ] %>%
+                           as.numeric], "'")
+
 # temporal network
 temporal_network <- getmatrix(model_personalized, "PDC")
 temporal_network[is.nan(temporal_network)] <- 0
 temporal_network[is.infinite(temporal_network)] <- 0
+
+# get strongest connections temporal network
 if (sum(abs(temporal_network)) > 0) {
   strongest_connection_temp <-
     label_vars[which(abs(temporal_network) == max(abs(temporal_network)), arr.ind = TRUE)]
@@ -261,6 +287,7 @@ if (sum(abs(temporal_network)) > 0) {
   strongest_connection_temp[2] <-
     paste0("'", strongest_connection_temp[2], "'")
   
+  # feedback sentences temporal network
   formulation_temp_strongest <-
     paste0(
       "Der insgesamt stärkste Zusammenhang zeigte sich zwischen ",
@@ -315,10 +342,11 @@ if (sum(abs(temporal_network)) > 0) {
   
   formulation_temp <-
     ifelse(
-      temporal_network[abs(temporal_network) >= max(abs(temporal_network))][1] > 0, 
+      temporal_network[abs(temporal_network) >= max(abs(temporal_network))][1] > 0,
       paste0(start_sentence[temp_nodes[1]],
-             end_sentence_positive[temp_nodes[2]], "."), paste0(start_sentence[temp_nodes[1]],
-                                                                end_sentence_negative[temp_nodes[2]], ".")
+             end_sentence_positive[temp_nodes[2]], "."),
+      paste0(start_sentence[temp_nodes[1]],
+             end_sentence_negative[temp_nodes[2]], ".")
     )
 } else {
   formulation_temp_strongest <-
@@ -374,7 +402,7 @@ Dieses Netzwerk zeigt, welche Erlebnisse wie zu einem Zeitpunkt der Studie im Sc
 - Der zentrale Faktor in Ihrem Netzwerk ist `r most_central_item`. Dieser Faktor verstärkte bzw. hemmte andere Faktoren im Netzwerk am meisten. 
 - Der insgesamt stärkste Zusammenhang zeigte sich zwischen `r strongest_connection_contemp [1]` und `r strongest_connection_contemp [2]`. `r formulation_contemp`.
 ```{r}
-qgraph::qgraph(
+qgraph(
   contemporaneous_network,
   theme = "Borkulo",
   layout="spring",
@@ -398,7 +426,7 @@ Dieses Netzwerk zeigt, wie sich Ihre Erlebnisse im Schnitt von einem Zeitpunkt z
 
 - `r formulation_temp_strongest`. `r formulation_temp`
 ```{r}
-qgraph::qgraph(
+qgraph(
   temporal_network,
   theme = "Borkulo",
   layout="spring",
