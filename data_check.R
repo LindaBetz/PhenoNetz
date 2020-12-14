@@ -1,12 +1,15 @@
+# code that allows to check raw input data from PhenoNetz-project
+# for an individual participant
+
+
 set.seed(1)
+
+# -------- 0: load libraries, custom functions ---------
+
 library(tidyverse)
 library(psychonetrics)
 library(qgraph)
 library(scales)
-
-alpha <-
-  .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
-ID <- 14
 
 
 # ... function to compute model per person
@@ -48,9 +51,16 @@ removeLinearTrends <- function(df) {
   }
   return(as_tibble(df))
 }
-# load data
-Questionnaire_Abfrage <- read_csv("Questionnaire_Abfrage.csv")
-data <- Questionnaire_Abfrage
+
+# -------- 1: set parameters for check ---------
+
+alpha <-
+  .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
+ID <- 11
+
+
+# -------- 2: data check ---------
+# name vars
 label_vars = c(
   "Ich bin traurig",
   "Ich nehme Dinge wahr, die andere \n    Menschen nicht wahrnehmen können",
@@ -65,6 +75,12 @@ label_vars = c(
 )
 final_vars <- Vars <- paste0("var_", c(as.character(1:10)))
 
+
+# load data
+Questionnaire_Abfrage <- read_csv("Questionnaire_Abfrage.csv")
+data <- Questionnaire_Abfrage
+
+# data preprocessing & check
 check_data <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
@@ -109,5 +125,6 @@ check_data <- data %>%
     ifelse(is.na(Query_of_Day), NA, x))) %>%
   select(-c(Timestamp, Lead_Day, Ref_Time, Diff_Time))
 
+# print missingness in data set
 message(paste0("missing: ", sum(is.na(check_data$var_1))/nrow(check_data)))
 
