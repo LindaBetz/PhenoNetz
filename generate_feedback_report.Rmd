@@ -29,7 +29,7 @@ library(scales)
 alpha <-
   .01 # significance level for thresholding in networks
 
-ID <- 1 # participant ID
+ID <- 2 # participant ID
 
 # ... function to compute model per person
 getPersonalizedModel <-
