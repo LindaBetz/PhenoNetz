@@ -29,7 +29,7 @@ library(scales)
 alpha <-
   .01 # significance level for thresholding in networks
 
-ID <- 5 # participant ID
+ID <- 1 # participant ID
 
 # ... function to compute model per person
 getPersonalizedModel <-
@@ -370,7 +370,7 @@ Im Rahmen der PhenoNetz-Studie haben Sie fünfmal täglich über einen Zeitraum 
 - Ich grüble
 
 
-![](insights_logo.png){width=30%}
+![](./imgs/insights_logo.png){width=30%}
 
 ## Durchschnittliche Ausprägung der Erlebnisse
 Hier zeigen wir Ihnen die durchschnittliche Stärke, mit der Sie einzelne Erlebnisse berichtet haben:
