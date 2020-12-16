@@ -9,7 +9,7 @@ output:
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-```{r, include=FALSE}
+```{r, include=FALSE, warning=FALSE}
 # makes sure that all the libraries used are installed
 packages <- c("tidyverse", "psychonetrics", "qgraph", "scales")
 if (length(missing_pkgs <-
@@ -29,7 +29,9 @@ library(scales)
 alpha <-
   .01 # significance level for thresholding in networks
 
-ID <- 2 # participant ID
+ID <- 11 # participant ID
+
+smooth <- TRUE
 
 # ... function to compute model per person
 getPersonalizedModel <-
@@ -165,6 +167,7 @@ severity_plot <- data %>%
 
 
 # plot: fluctuation of experiences
+if(smooth == TRUE){
 most_variable_items <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
@@ -200,7 +203,43 @@ fluctuation_plot <- data %>%
   scale_color_viridis_d() +
   scale_y_continuous(limits = c(-10, 100),
                      breaks = c(0, 25, 50, 75, 100)) +
-  scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))
+  scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))} else {
+    most_variable_items <- data %>%
+  mutate(date_ESM = as.Date(DateTime),
+         time_ESM = DateTime) %>%
+  filter(Participant_ID == ID) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  select(label_vars) %>%
+  summarise_all(sd) %>%
+  pivot_longer(cols = everything(),
+               names_to = "Erlebnis",
+               values_to = "Wert") %>%
+  top_n(3, Wert)
+fluctuation_plot <- data %>%
+  mutate(date_ESM = as.Date(DateTime),
+         time_ESM = DateTime) %>%
+  filter(Participant_ID == ID) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  select(most_variable_items$Erlebnis, time_ESM) %>%
+  pivot_longer(cols = most_variable_items$Erlebnis,
+               names_to = "Erlebnis",
+               values_to = "Wert") %>%
+  ggplot(., aes(x = time_ESM, y = Wert, color = Erlebnis)) + facet_wrap(~
+                                                                          Erlebnis, ncol = 1) +  geom_line(size =
+                                                                                                             1) +
+  theme_classic() +
+  xlab("\n Datum") +
+  theme(
+    legend.position  = "none",
+    strip.text = element_text(size = 14, colour = "black"),
+    axis.title = element_text(size = 14, colour = "black"),
+    axis.text = element_text(size = 14, colour = "black")
+  ) +
+  scale_color_viridis_d() +
+  scale_y_continuous(limits = c(-10, 100),
+                     breaks = c(0, 25, 50, 75, 100)) +
+  scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))}
+    
 
 # contemporaneous network
 contemporaneous_network <-
