@@ -1,7 +1,6 @@
 # code that allows to check raw input data from PhenoNetz-project
 # for an individual participant
 
-
 set.seed(1)
 
 # -------- 0: load libraries, custom functions ---------
@@ -57,7 +56,7 @@ removeLinearTrends <- function(df) {
 alpha <-
   .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
 
-ID <- 11
+ID <- 13
 
 
 # -------- 2: data check ---------

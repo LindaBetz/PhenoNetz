@@ -31,7 +31,7 @@ alpha <-
 
 ID <- 11 # participant ID
 
-smooth <- TRUE
+smooth <- TRUE # should trend in time-series be included?
 
 # ... function to compute model per person
 getPersonalizedModel <-
