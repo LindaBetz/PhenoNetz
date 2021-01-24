@@ -25,7 +25,7 @@ library(psychonetrics)
 library(qgraph)
 library(scales)
 
-# some parameters to set: # minor check
+# some parameters to set: 
 alpha <-
   .01 # significance level for thresholding in networks
 
