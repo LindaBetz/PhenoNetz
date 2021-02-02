@@ -10,47 +10,6 @@ library(psychonetrics)
 library(qgraph)
 library(scales)
 
-
-# ... function to compute model per person
-getPersonalizedModel <-
-  function(df,
-           beepvar = "Query_of_Day",
-           dayvar = "date_ESM",
-           vars = final_vars) {
-    tryCatch(
-      expr = {
-        model_pruned <- gvar(
-          df,
-          vars = vars,
-          beta = "full",
-          omega_zeta = "full",
-          beepvar = beepvar,
-          dayvar = dayvar,
-          verbose = TRUE,
-          estimator = "FIML"
-          
-          
-        )  %>% runmodel %>% prune(alpha = alpha, recursive = F) %>% stepup(alpha = alpha)
-        return(model_pruned)
-      },
-      error = function(e) {
-        return(NULL)
-        message("Error...")
-      }
-    )
-  }
-# ... function to check and remove linear trends
-removeLinearTrends <- function(df) {
-  df <- as.data.frame(df)
-  for (v in seq_along(Vars)) {
-    lmResult <- lm(unlist(df[, Vars[v]]) ~ df$time_ESM)
-    if (anova(lmResult)[["Pr(>F)"]][1] < .05) {
-      df[, Vars[v]][!is.na(df[, Vars[v]])] <- residuals(lmResult)
-    }
-  }
-  return(as_tibble(df))
-}
-
 # -------- 1: set parameters for check ---------
 
 alpha <-
