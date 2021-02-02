@@ -29,7 +29,7 @@ library(scales)
 alpha <-
   .01 # significance level for thresholding in networks
 
-ID <- 13 # participant ID
+ID <- 18 # participant ID
 
 smooth <- TRUE # should trend in time-series be included?
 

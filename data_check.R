@@ -56,7 +56,7 @@ removeLinearTrends <- function(df) {
 alpha <-
   .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
 
-ID <- 13
+ID <- 20
 
 
 # -------- 2: data check ---------
