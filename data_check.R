@@ -12,9 +12,6 @@ library(scales)
 
 # -------- 1: set parameters for check ---------
 
-alpha <-
-  .01 # auf .05 setzen, wenn beide Netzwerke sonst empty wären
-
 ID <- 20
 
 
@@ -87,3 +84,41 @@ check_data <- data %>%
 # print missingness in data set
 message(paste0("missing: ", sum(is.na(check_data$var_1))/nrow(check_data)))
 
+
+most_variable_items <- data %>%
+  mutate(date_ESM = as.Date(DateTime),
+         time_ESM = DateTime) %>%
+  filter(Participant_ID == ID) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  select(label_vars) %>%
+  summarise_all(sd) %>%
+  pivot_longer(cols = everything(),
+               names_to = "Erlebnis",
+               values_to = "Wert") %>%
+  top_n(10, Wert)
+
+fluctuation_plot <- data %>%
+  mutate(date_ESM = as.Date(DateTime),
+         time_ESM = DateTime) %>%
+  filter(Participant_ID == ID) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  select(most_variable_items$Erlebnis, time_ESM) %>%
+  pivot_longer(cols = most_variable_items$Erlebnis,
+               names_to = "Erlebnis",
+               values_to = "Wert") %>%
+  ggplot(., aes(x = time_ESM, y = Wert, color = Erlebnis)) + facet_wrap( ~
+                                                                           Erlebnis, ncol = 1) +  geom_line(size =
+                                                                                                              1) +
+  geom_smooth(method = "loess", formula = y ~ x) +
+  theme_classic() +
+  xlab("\n Datum") +
+  theme(
+    legend.position  = "none",
+    strip.text = element_text(size = 14, colour = "black"),
+    axis.title = element_text(size = 14, colour = "black"),
+    axis.text = element_text(size = 14, colour = "black")
+  ) +
+  scale_color_viridis_d() +
+  scale_y_continuous(limits = c(-10, 100),
+                     breaks = c(0, 25, 50, 75, 100)) +
+  scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))
