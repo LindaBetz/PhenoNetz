@@ -2,7 +2,7 @@
 library(tidyverse)
 library(mlVAR)
 
-set.seed(1)
+set.seed(123)
 
 # dropout codes to be inserted here
 dropouts <-

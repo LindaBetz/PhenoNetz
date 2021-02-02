@@ -29,7 +29,7 @@ library(scales)
 alpha <-
   .01 # significance level for thresholding in networks
 
-ID <- 18 # participant ID
+ID <- 20 # participant ID
 
 smooth <- TRUE # should trend in time-series be included?
 
@@ -50,8 +50,9 @@ getPersonalizedModel <-
           dayvar = dayvar,
           verbose = TRUE,
           estimator = "FIML"
-        )  %>% runmodel %>% modelsearch(prunealpha = alpha, addalpha = alpha) 
-        # prune(alpha = alpha, recursive = F, adjust = "none") %>% stepup(alpha = alpha)
+        )  %>% runmodel %>% prune(alpha = alpha, recursive = F, adjust = "none") %>% stepup(alpha = alpha)
+          #modelsearch(prunealpha = alpha, addalpha = alpha) 
+        # 
         return(model_pruned)
       },
       error = function(e) {
