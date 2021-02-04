@@ -1,7 +1,7 @@
 ---
-title: "Data Check for Participants"
-author: "Linda Betz"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+title: "Data Check for Participant "
+author: "FETZ Cologne"
+date: "`r format(Sys.time(), '%d. %B %Y')`"
 output: 
   html_document:
     theme: united
@@ -25,15 +25,25 @@ library(tidyverse)
 library(psychonetrics)
 library(qgraph)
 library(scales)
+
 set.seed(1)
-data <- Questionnaire_Abfrage <- read_csv("Questionnaire_Abfrage.csv")
-Study_Participants <- read_csv("Participants_Study_Time_Range.csv")
 ```
-```{r, include=TRUE, echo=TRUE}
-ID <- 20
+```{r, include=FALSE,warning=FALSE}
+# set which participnt to process
+participant_code <- "UKK1VIZYJMBRRACL" # participant code (in "")
+
+# load data
+data <- read_csv("Questionnaire_Abfrage.csv")
+participant_ids <- read_csv("Participants_Study_Time_Range.csv")
+
+# convert participant code to participant ID 
+participant_id <- participant_ids %>%
+  filter(Participant_Code == participant_code) %>%
+  select(Participant_ID) %>%
+  as.numeric()
+
 ```
-We're looking at the participant with ID `r ID` with participant code
-`r Study_Participants %>% filter(Participant_ID==ID) %>% select(Participant_Code)`.
+## We're looking at participant `r participant_code` with data ID `r participant_id`.
 
 ```{r, echo=FALSE}
 # name vars
@@ -55,7 +65,7 @@ final_vars <- Vars <- paste0("var_", c(as.character(1:10)))
 check_data <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
-  filter(Participant_ID == ID) %>%
+  filter(Participant_ID == participant_id) %>%
   mutate(
     Day_Study = date_ESM - .$date_ESM[1] + 1,
     DateTime = str_replace(DateTime, "UTC", "CET"),
@@ -104,7 +114,7 @@ number_days <- max(check_data$Day_Study)
 severity_plot <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
-  filter(Participant_ID == ID) %>%
+  filter(Participant_ID == participant_id) %>%
   rename_at(vars(matches("1-0")), ~ label_vars) %>%
   select(label_vars) %>%
   summarise_all(mean) %>%
@@ -127,39 +137,28 @@ severity_plot <- data %>%
 most_variable_items <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
-  filter(Participant_ID == ID) %>%
+  filter(Participant_ID == participant_id) %>%
   rename_at(vars(matches("1-0")), ~ label_vars) %>%
   select(label_vars) %>%
   summarise_all(sd) %>%
   pivot_longer(cols = everything(),
                names_to = "Erlebnis",
-               values_to = "Wert") %>%
-  top_n(3, Wert)
+               values_to = "SD") %>%
+  top_n(10, SD) %>% arrange(-SD)
 
-least_variable_items <- data %>%
+fluctuation_plot <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
-  filter(Participant_ID == ID) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
-  select(label_vars) %>%
-  summarise_all(sd) %>%
-  pivot_longer(cols = everything(),
-               names_to = "Erlebnis",
-               values_to = "Wert") %>%
-  top_n(3, -Wert)
-
-
-most_fluctuation_plot <- data %>%
-  mutate(date_ESM = as.Date(DateTime),
-         time_ESM = DateTime) %>%
-  filter(Participant_ID == ID) %>%
+  filter(Participant_ID == participant_id) %>%
   rename_at(vars(matches("1-0")), ~ label_vars) %>%
   select(most_variable_items$Erlebnis, time_ESM) %>%
   pivot_longer(cols = most_variable_items$Erlebnis,
                names_to = "Erlebnis",
                values_to = "Wert") %>%
-  ggplot(., aes(x = time_ESM, y = Wert, color = Erlebnis)) + facet_wrap(~
-                                                                          Erlebnis, ncol = 1) +  geom_line(size =
+  mutate(Erlebnis = factor(Erlebnis, levels = most_variable_items$Erlebnis)) %>%
+  ggplot(., aes(x = time_ESM, y = Wert, color = Erlebnis)) + facet_wrap(~ Erlebnis,
+                                                                          
+                                                                                 ncol = 1) +  geom_line(size =
                                                                                                              1) +
   geom_smooth(method = "loess", formula = y ~ x) +
   theme_classic() +
@@ -170,45 +169,20 @@ most_fluctuation_plot <- data %>%
     axis.title = element_text(size = 14, colour = "black"),
     axis.text = element_text(size = 14, colour = "black")
   ) +
-  scale_color_viridis_d() +
+  scale_color_viridis_d(direction = -1) +
   scale_y_continuous(limits = c(-10, 100),
                      breaks = c(0, 25, 50, 75, 100)) +
   scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))
 
-least_fluctuation_plot <- data %>%
-  mutate(date_ESM = as.Date(DateTime),
-         time_ESM = DateTime) %>%
-  filter(Participant_ID == ID) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
-  select(least_variable_items$Erlebnis, time_ESM) %>%
-  pivot_longer(cols = least_variable_items$Erlebnis,
-               names_to = "Erlebnis",
-               values_to = "Wert") %>%
-  ggplot(., aes(x = time_ESM, y = Wert, color = Erlebnis)) + facet_wrap(~
-                                                                          Erlebnis, ncol = 1) +  geom_line(size =
-                                                                                                             1) +
-  geom_smooth(method = "loess", formula = y ~ x) +
-  theme_classic() +
-  xlab("\n Datum") +
-  theme(
-    legend.position  = "none",
-    strip.text = element_text(size = 14, colour = "black"),
-    axis.title = element_text(size = 14, colour = "black"),
-    axis.text = element_text(size = 14, colour = "black")
-  ) +
-  scale_color_viridis_d() +
-  scale_y_continuous(limits = c(-10, 100),
-                     breaks = c(0, 25, 50, 75, 100)) +
-  scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))
 ```
 ## General Info
-Participant `r ID` entered the PhenoNetz-Study on `r format(first_day, '%d %B, %Y')`. 
+Participant `r participant_code` entered the PhenoNetz-Study on `r format(first_day, '%d %B, %Y')`. 
 The last day in the study was `r format(last_day, '%d %B, %Y')`.
 He/she completed `r number_days` days in the study.
 
 ## Raw Data 
 ```{r, echo = F}
-data %>% filter(Participant_ID == ID) %>% print(n=Inf, width=Inf)
+data %>% filter(Participant_ID == participant_id) %>% print(n=Inf, width=Inf)
 ```
 
 ## Preprocessed Data
@@ -218,23 +192,17 @@ check_data %>% print(n=Inf, width=Inf)
 
 
 ## Missingness
-Participant `r ID` has `r round(missings,2)` % missing values.
+Participant `r participant_code` has `r round(missings,2)` % missing values.
 
 ## Experience Sampling Items
 ### Mean Endorsement
-````{r}
+````{r, fig.width = 8, fig.height = 6}
 severity_plot
 ```
 
 ## Fluctuation
-The 3 most variable items were:
-````{r}
+Items sorted by how much the fluctuated:
+````{r,  fig.width = 6, fig.height = 18}
 most_variable_items
-most_fluctuation_plot
-```
-
-The 3 least variable items were:
-````{r}
-least_variable_items
-least_fluctuation_plot
+fluctuation_plot
 ```
