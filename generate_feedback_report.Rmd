@@ -28,12 +28,12 @@ library(qgraph)
 library(scales)
 
 # some parameters to set: 
-participant_code <- "UKK1VIZYJMBRRACL" # participant code (in "")
+participant_code <- "UKK1VIZYAPYGTUXD" # participant code (in "")
 
 alpha <-
   .01 # significance level for thresholding in networks
 
-smooth <- TRUE # should trend in time-series be included?
+smooth <- FALSE # should trend in time-series be included?
 
 # ... function to compute model per person
 getPersonalizedModel <-
@@ -51,10 +51,10 @@ getPersonalizedModel <-
           beepvar = beepvar,
           dayvar = dayvar,
           verbose = TRUE,
-          estimator = "FIML"
-        )  %>% runmodel %>% prune(alpha = alpha, recursive = F, adjust = "none") %>% stepup(alpha = alpha)
-          #modelsearch(prunealpha = alpha, addalpha = alpha) 
-        # 
+          optimizer = "nlminb",
+          estimator = "FIML") %>% runmodel %>% prune(alpha = alpha, recursive = F, adjust = "none", startreduce = 0.95) %>% stepup(alpha = alpha)
+          
+        # modelsearch(prunealpha = alpha, addalpha = alpha) 
         return(model_pruned)
       },
       error = function(e) {
@@ -64,13 +64,23 @@ getPersonalizedModel <-
     )
   }
 
-# ... function to check and remove linear trends
+# function to determine zero range
+zeroRange <- function(x, tol = .Machine$double.eps ^ 0.5) {
+  x <- x %>% na.omit()
+  if (length(x) == 1) return(TRUE)
+  x <- range(x) / mean(x)
+  isTRUE(all.equal(x[1], x[2], tolerance = tol))
+}
+
+# function to remove linear trends
 removeLinearTrends <- function(df) {
   df <- as.data.frame(df)
   for (v in seq_along(Vars)) {
+    if(zeroRange(df[, Vars[v]]) == TRUE) {df[, Vars[v]] <- df[, Vars[v]]} else {
     lmResult <- lm(unlist(df[, Vars[v]]) ~ df$time_ESM)
     if (anova(lmResult)[["Pr(>F)"]][1] < .05) {
       df[, Vars[v]][!is.na(df[, Vars[v]])] <- residuals(lmResult)
+    }
     }
   }
   return(as_tibble(df))
@@ -144,7 +154,7 @@ model_personalized <- data %>%
   mutate(Query_of_Day = ifelse(abs(Diff_Time) > 60, NA, Query_of_Day)) %>%
   rename_at(vars(matches("-1-0")), ~ final_vars) %>%
   mutate(across(matches("var_"), function(x)
-    ifelse(is.na(Query_of_Day), NA, x))) %>%
+    ifelse(is.na(.$Query_of_Day), NA, x))) %>%
   select(-c(Timestamp, Lead_Day, Ref_Time, Diff_Time)) %>%
   mutate_at(vars(final_vars), scale) %>%
   removeLinearTrends() %>%
@@ -463,7 +473,7 @@ qgraph(
   GLratio = 1,
   vsize = 5,
   edge.width = 1,
-  mar =  c(5,3,3,3)
+  mar =  c(7,3,3,3)
 )
 ```
 

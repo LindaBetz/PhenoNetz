@@ -30,7 +30,7 @@ set.seed(1)
 ```
 ```{r, include=FALSE,warning=FALSE}
 # set which participnt to process
-participant_code <- "UKK1VIZYJMBRRACL" # participant code (in "")
+participant_code <- "UKK1VIZYQMPMOCIX" # participant code (in "")
 
 # load data
 data <- read_csv("Questionnaire_Abfrage.csv")
@@ -103,14 +103,18 @@ check_data <- data %>%
   mutate(Query_of_Day = ifelse(Diff_Time > 60, NA, Query_of_Day)) %>%
   rename_at(vars(matches("-1-0")), ~ final_vars) %>%
   mutate(across(matches("var_"), function(x)
-    ifelse(is.na(Query_of_Day), NA, x))) %>%
+    ifelse(is.na(.$Query_of_Day), NA, x))) %>%
   select(-c(Timestamp, Lead_Day, Ref_Time, Diff_Time))
 
-missings <- sum(is.na(check_data$var_1))/nrow(check_data)*100
+# some stats for text
 first_day <- min(check_data$date_ESM)
 last_day <- max(check_data$date_ESM)
 number_days <- max(check_data$Day_Study)
+missings_of_filled_out <- sum(is.na(check_data$var_1))/nrow(check_data)*100
+filled_out_total <- sum(!is.na(check_data$var_1))/min(14*5, as.numeric(number_days)*5)*100
+filled_in_days <- length(unique(as.numeric(check_data$Day_Study)))
 
+# severity plot
 severity_plot <- data %>%
   mutate(date_ESM = as.Date(DateTime),
          time_ESM = DateTime) %>%
@@ -178,7 +182,7 @@ fluctuation_plot <- data %>%
 ## General Info
 Participant `r participant_code` entered the PhenoNetz-Study on `r format(first_day, '%d %B, %Y')`. 
 The last day in the study was `r format(last_day, '%d %B, %Y')`.
-He/she completed `r number_days` days in the study.
+He/she completed `r number_days` days in the study, of which he/she filled out surveys on `r filled_in_days` days.
 
 ## Raw Data 
 ```{r, echo = F}
@@ -191,8 +195,8 @@ check_data %>% print(n=Inf, width=Inf)
 ```
 
 
-## Missingness
-Participant `r participant_code` has `r round(missings,2)` % missing values.
+## Missingness / Valid Beeps
+He/she completed a total of `r sum(!is.na(check_data$var_1))+sum(is.na(check_data$var_1))` surveys, of which `r sum(!is.na(check_data$var_1))` were valid. Participant `r participant_code` has `r round(missings_of_filled_out,2)` % missing values of those he/she filled out. Of all possible beeps (max. = 70), `r 100-round(filled_out_total,2)` % are missing.
 
 ## Experience Sampling Items
 ### Mean Endorsement
