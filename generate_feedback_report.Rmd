@@ -28,7 +28,7 @@ library(qgraph)
 library(scales)
 
 # some parameters to set: 
-participant_code <- "UKK1VIZYAPYGTUXD" # participant code (in "")
+participant_code <- "UKK1VIZYZWFDBOBL" # participant code (in "")
 
 alpha <-
   .01 # significance level for thresholding in networks
@@ -51,9 +51,9 @@ getPersonalizedModel <-
           beepvar = beepvar,
           dayvar = dayvar,
           verbose = TRUE,
+          standardize = "z",
           optimizer = "nlminb",
           estimator = "FIML") %>% runmodel %>% prune(alpha = alpha, recursive = F, adjust = "none", startreduce = 0.95) %>% stepup(alpha = alpha)
-          
         # modelsearch(prunealpha = alpha, addalpha = alpha) 
         return(model_pruned)
       },
@@ -64,23 +64,14 @@ getPersonalizedModel <-
     )
   }
 
-# function to determine zero range
-zeroRange <- function(x, tol = .Machine$double.eps ^ 0.5) {
-  x <- x %>% na.omit()
-  if (length(x) == 1) return(TRUE)
-  x <- range(x) / mean(x)
-  isTRUE(all.equal(x[1], x[2], tolerance = tol))
-}
 
 # function to remove linear trends
 removeLinearTrends <- function(df) {
   df <- as.data.frame(df)
-  for (v in seq_along(Vars)) {
-    if(zeroRange(df[, Vars[v]]) == TRUE) {df[, Vars[v]] <- df[, Vars[v]]} else {
-    lmResult <- lm(unlist(df[, Vars[v]]) ~ df$time_ESM)
+  for (v in seq_along(final_vars)) {
+    lmResult <- lm(unlist(df[, final_vars[v]]) ~ df$time_ESM)
     if (anova(lmResult)[["Pr(>F)"]][1] < .05) {
-      df[, Vars[v]][!is.na(df[, Vars[v]])] <- residuals(lmResult)
-    }
+      df[, final_vars[v]][!is.na(df[, final_vars[v]])] <- residuals(lmResult)
     }
   }
   return(as_tibble(df))
@@ -110,7 +101,83 @@ label_vars = c(
   "Ich grüble"
 )
 
-final_vars <- Vars <- paste0("var_", c(as.character(1:10)))
+all_vars <- paste0("var_", c(as.character(1:10)))
+
+
+# plot: strength of experiences
+severity_plot <- data %>%
+  mutate(date_ESM = as.Date(DateTime),
+         time_ESM = DateTime) %>%
+  filter(Participant_ID == participant_id) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  select(label_vars) %>%
+  summarise_all(mean) %>%
+  pivot_longer(cols = everything(),
+               names_to = "Erlebnis",
+               values_to = "Wert") %>%
+  mutate(Erlebnis = reorder(Erlebnis, Wert)) %>%
+  ggplot(., aes(x = Erlebnis, y = Wert, fill = Erlebnis)) +
+  geom_bar(stat = "identity") +
+  xlab("") +
+  ylab("\n Durchschnittliche Stärke (%)") +
+  coord_flip() + theme_classic() +
+  theme(
+    legend.position  = "none",
+    axis.title = element_text(size = 14, colour = "black"),
+    axis.text = element_text(size = 14, color = "black")
+  ) +
+  scale_fill_viridis_d()
+
+
+# plot: fluctuation of experiences
+  most_variable_items <- data %>%
+  mutate(date_ESM = as.Date(DateTime),
+         time_ESM = DateTime) %>%
+  filter(Participant_ID == participant_id) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  select(label_vars) %>%
+  summarise_all(sd) %>%
+  pivot_longer(cols = everything(),
+               names_to = "Erlebnis",
+               values_to = "Wert") %>%
+  top_n(3, Wert)
+fluctuation_plot <- data %>%
+  mutate(date_ESM = as.Date(DateTime),
+         time_ESM = DateTime) %>%
+  filter(Participant_ID == participant_id) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  select(most_variable_items$Erlebnis, time_ESM) %>%
+  pivot_longer(cols = most_variable_items$Erlebnis,
+               names_to = "Erlebnis",
+               values_to = "Wert") %>%
+  ggplot(., aes(x = time_ESM, y = Wert, color = Erlebnis)) + facet_wrap(~
+                                                                          Erlebnis, ncol = 1) +  geom_line(size =
+                                                                                                             1) +
+  theme_classic() +
+  xlab("\n Datum") +
+  theme(
+    legend.position  = "none",
+    strip.text = element_text(size = 14, colour = "black"),
+    axis.title = element_text(size = 14, colour = "black"),
+    axis.text = element_text(size = 14, colour = "black")
+  ) +
+  scale_color_viridis_d() +
+  scale_y_continuous(limits = c(-10, 100),
+                     breaks = c(0, 25, 50, 75, 100)) +
+  scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))
+    
+
+
+# check for any completely constant ESM variable
+constant_var <- data %>% 
+  filter(Participant_ID == participant_id) %>%
+  rename_at(vars(matches("-1-0")), ~ all_vars) %>%
+  summarise(across(matches("var"), ~ length(unique(.)))) %>%
+  select(which(. <= 2)) %>%
+  colnames(.)
+
+# if there is any completely constant variable, we remove it for computation of the networks
+final_vars <- subset(all_vars, !(all_vars %in% constant_var))
 
 # compute individualized network models
 model_personalized <- data %>%
@@ -152,118 +219,25 @@ model_personalized <- data %>%
   ) %>%
   mutate(Diff_Time = difftime(DateTime, Ref_Time,  units = "mins")) %>%
   mutate(Query_of_Day = ifelse(abs(Diff_Time) > 60, NA, Query_of_Day)) %>%
-  rename_at(vars(matches("-1-0")), ~ final_vars) %>%
+  rename_at(vars(matches("-1-0")), ~ all_vars) %>%
   mutate(across(matches("var_"), function(x)
     ifelse(is.na(.$Query_of_Day), NA, x))) %>%
-  select(-c(Timestamp, Lead_Day, Ref_Time, Diff_Time)) %>%
-  mutate_at(vars(final_vars), scale) %>%
+  select(c(Questionnaire_of_Day, Query_of_Day, final_vars, date_ESM,  time_ESM,  Day_Study)) %>%
   removeLinearTrends() %>%
   getPersonalizedModel()
-
-
-# plot: strength of experiences
-severity_plot <- data %>%
-  mutate(date_ESM = as.Date(DateTime),
-         time_ESM = DateTime) %>%
-  filter(Participant_ID == participant_id) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
-  select(label_vars) %>%
-  summarise_all(mean) %>%
-  pivot_longer(cols = everything(),
-               names_to = "Erlebnis",
-               values_to = "Wert") %>%
-  mutate(Erlebnis = reorder(Erlebnis, Wert)) %>%
-  ggplot(., aes(x = Erlebnis, y = Wert, fill = Erlebnis)) +
-  geom_bar(stat = "identity") +
-  xlab("") +
-  ylab("\n Durchschnittliche Stärke (%)") +
-  coord_flip() + theme_classic() +
-  theme(
-    legend.position  = "none",
-    axis.title = element_text(size = 14, colour = "black"),
-    axis.text = element_text(size = 14, color = "black")
-  ) +
-  scale_fill_viridis_d()
-
-
-# plot: fluctuation of experiences
-if(smooth == TRUE){
-most_variable_items <- data %>%
-  mutate(date_ESM = as.Date(DateTime),
-         time_ESM = DateTime) %>%
-  filter(Participant_ID == participant_id) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
-  select(label_vars) %>%
-  summarise_all(sd) %>%
-  pivot_longer(cols = everything(),
-               names_to = "Erlebnis",
-               values_to = "Wert") %>%
-  top_n(3, Wert)
-fluctuation_plot <- data %>%
-  mutate(date_ESM = as.Date(DateTime),
-         time_ESM = DateTime) %>%
-  filter(Participant_ID == participant_id) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
-  select(most_variable_items$Erlebnis, time_ESM) %>%
-  pivot_longer(cols = most_variable_items$Erlebnis,
-               names_to = "Erlebnis",
-               values_to = "Wert") %>%
-  ggplot(., aes(x = time_ESM, y = Wert, color = Erlebnis)) + facet_wrap(~
-                                                                          Erlebnis, ncol = 1) +  geom_line(size =
-                                                                                                             1) +
-  geom_smooth(method = "loess", formula = y ~ x) +
-  theme_classic() +
-  xlab("\n Datum") +
-  theme(
-    legend.position  = "none",
-    strip.text = element_text(size = 14, colour = "black"),
-    axis.title = element_text(size = 14, colour = "black"),
-    axis.text = element_text(size = 14, colour = "black")
-  ) +
-  scale_color_viridis_d() +
-  scale_y_continuous(limits = c(-10, 100),
-                     breaks = c(0, 25, 50, 75, 100)) +
-  scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))} else {
-    most_variable_items <- data %>%
-  mutate(date_ESM = as.Date(DateTime),
-         time_ESM = DateTime) %>%
-  filter(Participant_ID == participant_id) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
-  select(label_vars) %>%
-  summarise_all(sd) %>%
-  pivot_longer(cols = everything(),
-               names_to = "Erlebnis",
-               values_to = "Wert") %>%
-  top_n(3, Wert)
-fluctuation_plot <- data %>%
-  mutate(date_ESM = as.Date(DateTime),
-         time_ESM = DateTime) %>%
-  filter(Participant_ID == participant_id) %>%
-  rename_at(vars(matches("1-0")), ~ label_vars) %>%
-  select(most_variable_items$Erlebnis, time_ESM) %>%
-  pivot_longer(cols = most_variable_items$Erlebnis,
-               names_to = "Erlebnis",
-               values_to = "Wert") %>%
-  ggplot(., aes(x = time_ESM, y = Wert, color = Erlebnis)) + facet_wrap(~
-                                                                          Erlebnis, ncol = 1) +  geom_line(size =
-                                                                                                             1) +
-  theme_classic() +
-  xlab("\n Datum") +
-  theme(
-    legend.position  = "none",
-    strip.text = element_text(size = 14, colour = "black"),
-    axis.title = element_text(size = 14, colour = "black"),
-    axis.text = element_text(size = 14, colour = "black")
-  ) +
-  scale_color_viridis_d() +
-  scale_y_continuous(limits = c(-10, 100),
-                     breaks = c(0, 25, 50, 75, 100)) +
-  scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))}
-    
 
 # contemporaneous network
 contemporaneous_network <-
   getmatrix(model_personalized, "omega_zeta")
+
+position_constant_var <- which(all_vars == constant_var)
+
+if(length(position_constant_var) >= 1) {
+  new_mat <- matrix(0, nrow = 10, ncol = 10)
+  new_mat[-position_constant_var,-position_constant_var] <-
+    contemporaneous_network
+  contemporaneous_network <- new_mat
+}
 
 # get strongest connections contemporaneous network
 strongest_connection_contemp <-
@@ -316,6 +290,7 @@ end_sentence_negative <-
     "desto weniger misstrauisch waren Sie gegenüber anderen Menschen",
     "desto weniger grübelten Sie"
   )
+
 formulation_contemp <-
   ifelse(
     contemporaneous_network[abs(contemporaneous_network) >= max(abs(contemporaneous_network))][1] > 0,
@@ -333,6 +308,14 @@ most_central_item <-
 temporal_network <- getmatrix(model_personalized, "PDC")
 temporal_network[is.nan(temporal_network)] <- 0
 temporal_network[is.infinite(temporal_network)] <- 0
+
+
+if(length(position_constant_var) >= 1) {
+  new_mat <- matrix(0, nrow = 10, ncol = 10)
+  new_mat[-position_constant_var, -position_constant_var] <-
+    temporal_network
+  temporal_network <- new_mat
+}
 
 # get strongest connections temporal network
 if (sum(abs(temporal_network)) > 0) {
@@ -395,7 +378,7 @@ if (sum(abs(temporal_network)) > 0) {
       "desto weniger misstrauisch waren Sie 3 Stunden später gegenüber anderen Menschen",
       "desto weniger grübelten Sie 3 Stunden später"
     )
-  
+
   formulation_temp <-
     ifelse(
       temporal_network[abs(temporal_network) >= max(abs(temporal_network))][1] > 0,
