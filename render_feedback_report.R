@@ -3,7 +3,7 @@
 library(tidyverse)
 
 # load data
-participant_code <- "UKK1VIZYZWFDBOBL" # participant code (in "")
+participant_code <- "UKK1VIZYODYWRZBQ" # participant code (in "")
 
 rmarkdown::render(
   'generate_feedback_report.Rmd',
