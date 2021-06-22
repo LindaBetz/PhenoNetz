@@ -30,7 +30,7 @@ set.seed(1)
 ```
 ```{r, include=FALSE,warning=FALSE}
 # set which participnt to process
-participant_code <- "UKK1VIZYHNEAIXCD" # participant code (in "")
+participant_code <- "UKK1VIZYRNBMKRBF" # participant code (in "")
 
 # load data
 data <- read_csv("Questionnaire_Abfrage.csv")

@@ -28,7 +28,7 @@ library(qgraph)
 library(scales)
 
 # some parameters to set: 
-participant_code <- "UKK1VIZYODYWRZBQ" # participant code (in "")
+participant_code <- "UKK1VIZYRNBMKRBF" # participant code (in "")
 
 alpha <-
   .01 # significance level for thresholding in networks
@@ -52,7 +52,7 @@ getPersonalizedModel <-
           dayvar = dayvar,
           verbose = TRUE,
           standardize = "z",
-          optimizer = "ucminf",
+          optimizer = "nlminb",
           estimator = "FIML") %>% runmodel %>% prune(alpha = alpha, recursive = F, adjust = "none", startreduce = 0.95) %>% stepup(alpha = alpha)
         # modelsearch(prunealpha = alpha, addalpha = alpha) 
         return(model_pruned)
