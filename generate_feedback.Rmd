@@ -1,6 +1,6 @@
 ---
 title: "PhenoNetz-Ergebnisse"
-date: "`r format(Sys.time(), '%d. %B %Y')`"
+date: "`r format(Sys.time(), '%d. %m. %Y')`"
 author: "FETZ Köln"
 fontsize: 8 pt
 output:
@@ -28,7 +28,7 @@ library(qgraph)
 library(scales)
 
 # some parameters to set: 
-participant_code <- "UKK1VIZYRNBMKRBF" # participant code (in "")
+participant_code <- "UKK1VIZYPEZHISKX" # participant code (in "")
 
 alpha <-
   .01 # significance level for thresholding in networks
@@ -46,14 +46,14 @@ getPersonalizedModel <-
         model_pruned <- gvar(
           df,
           vars = vars,
-          beta = "full",
-          omega_zeta = "full",
+          beta = "empty",
+          omega_zeta = "empty",
           beepvar = beepvar,
           dayvar = dayvar,
           verbose = TRUE,
           standardize = "z",
           optimizer = "nlminb",
-          estimator = "FIML") %>% runmodel %>% prune(alpha = alpha, recursive = F, adjust = "none", startreduce = 0.95) %>% stepup(alpha = alpha)
+          estimator = "FIML") %>% runmodel %>% stepup(alpha = alpha) %>% psychonetrics::prune(alpha = alpha, recursive = F, adjust = "none", startreduce = 0.95)
         # modelsearch(prunealpha = alpha, addalpha = alpha) 
         return(model_pruned)
       },
