@@ -1,7 +1,7 @@
 ---
 title: "Data Check for Participant "
 author: "FETZ Cologne"
-date: "`r format(Sys.time(), '%d. %B %Y')`"
+date: "`r format(Sys.time(), '%d. %m. %Y')`"
 output: 
   html_document:
     theme: united
