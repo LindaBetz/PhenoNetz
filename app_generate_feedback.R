@@ -52,7 +52,7 @@ shinyApp(
   server = function(input, output) {
     output$report <- downloadHandler(
       filename = function() {
-        paste(input$participant_code, "_report", ".pdf", sep = "")
+        paste(input$participant_code, "_feedback", ".pdf", sep = "")
       },
       content = function(file) {
         # Copy the report file to a temporary directory before processing it, in
