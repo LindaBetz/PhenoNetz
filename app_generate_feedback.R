@@ -20,7 +20,7 @@ shinyApp(
       
       fileInput(
         "data",
-        label = "Select the most recent data file (starts with Questionnaire_Abfrage_)",
+        label = "Select the most recent data file (starts with Questionnaire_Abfrage_):",
         multiple = FALSE,
         accept = ".csv",
         width = '100%',
@@ -29,7 +29,7 @@ shinyApp(
       ),
       fileInput(
         "participant_ids",
-        label = "Select the most recent participant file here (starts with Participants_Study_Time_Range)",
+        label = "Select the most recent participant file here (starts with Participants_Study_Time_Range):",
         multiple = FALSE,
         accept = ".csv",
         width = '100%',
@@ -52,7 +52,7 @@ shinyApp(
   server = function(input, output) {
     output$report <- downloadHandler(
       filename = function() {
-        paste(input$participant_code, "_feedback", ".pdf", sep = "")
+        paste(input$participant_code, "_feedback", ".html", sep = "")
       },
       content = function(file) {
         # Copy the report file to a temporary directory before processing it, in
