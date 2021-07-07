@@ -2,15 +2,17 @@
 title: "PhenoNetz-Ergebnisse"
 date: "`r format(Sys.time(), '%d. %m. %Y')`"
 author: "FETZ Köln"
-fontsize: 8 pt
-output:
-  beamer_presentation: default
+output: 
+  html_document:
+    theme: united
+    highlight: haddock
 params:
   participant_code: NA
   data: NA
   participant_ids: NA
   contemp_only: FALSE
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
@@ -464,13 +466,15 @@ Im Rahmen der PhenoNetz-Studie haben Sie fünfmal täglich über einen Zeitraum 
 
 ## Durchschnittliche Ausprägung der Erlebnisse
 Hier zeigen wir Ihnen die durchschnittliche Stärke, mit der Sie einzelne Erlebnisse berichtet haben:
-````{r}
+
+````{r, fig.width = 8.5, fig.height = 7}
 severity_plot
 ```
 
 ## Erlebnisse über die Zeit
 Hier zeigen wir, wie sich Erlebnisse über die Zeit der PhenoNetz-Studie bei Ihnen verändert haben:
-````{r}
+
+````{r, fig.width = 8, fig.height = 7}
 fluctuation_plot
 ```
 
@@ -488,6 +492,7 @@ Dieses Netzwerk zeigt, welche Erlebnisse wie zu einem Zeitpunkt der Studie im Sc
 
 - Der zentrale Faktor in Ihrem Netzwerk ist `r most_central_item`. Dieser Faktor verstärkte bzw. hemmte andere Faktoren im Netzwerk am meisten. 
 - Der insgesamt stärkste Zusammenhang zeigte sich zwischen `r strongest_connection_contemp [1]` und `r strongest_connection_contemp [2]`. `r formulation_contemp`.
+
 ```{r}
 qgraph(
   contemporaneous_network,
@@ -499,7 +504,7 @@ qgraph(
   layoutOffset = c(-0.05, 0),
   nodeNames = label_vars,
   label.cex = 1.75,
-  legend.cex = 0.75,
+  legend.cex = 0.5,
   layoutScale = c(0.8, 0.8),
   GLratio = 1,
   vsize = 5,
@@ -512,6 +517,7 @@ qgraph(
 Dieses Netzwerk zeigt, wie sich Ihre Erlebnisse im Schnitt von einem Zeitpunkt zum nächsten Zeitpunkt (ca. 3 Stunden später) vorhersagten.
 
 - `r formulation_temp_strongest`. `r formulation_temp`
+
 ```{r}
 qgraph(
   temporal_network,
@@ -523,7 +529,7 @@ qgraph(
   layoutOffset = c(-0.05, 0),
   nodeNames = label_vars,
   label.cex = 1.75,
-  legend.cex = 0.75,
+  legend.cex = 0.5,
   layoutScale = c(0.8, 0.8),
   GLratio = 1,
   vsize = 5,
