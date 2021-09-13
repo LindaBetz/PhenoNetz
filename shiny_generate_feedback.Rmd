@@ -221,7 +221,7 @@ constant_var <- data %>%
   filter(Participant_ID == participant_id) %>%
   rename_at(vars(matches("-1-0")), ~ all_vars) %>%
   summarise(across(matches("var"), ~ length(unique(.)))) %>%
-  select(which(. <= 2)) %>%
+  select(which(. <= 4)) %>%
   colnames(.)
 
 # if there is any completely constant variable, we remove it for computation of the networks
@@ -278,7 +278,7 @@ model_personalized <- data %>%
 contemporaneous_network <-
   getmatrix(model_personalized, "omega_zeta")
 
-position_constant_var <- which(all_vars == constant_var)
+position_constant_var <- match(constant_var, all_vars) # match as a "vectorized" which
 
 if(length(position_constant_var) >= 1) {
   new_mat <- matrix(0, nrow = 10, ncol = 10)

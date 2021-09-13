@@ -17,14 +17,6 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r, include=FALSE, warning=FALSE}
-# makes sure that all the libraries used are installed
-packages <- c("tidyverse", "psychonetrics", "qgraph", "scales")
-if (length(missing_pkgs <-
-           setdiff(packages, rownames(installed.packages()))) > 0) {
-  message("Installing missing package(s): ",
-          paste(missing_pkgs, collapse = ", "))
-  install.packages(missing_pkgs)
-}
 library(tidyverse)
 library(psychonetrics)
 library(qgraph)
@@ -187,6 +179,7 @@ fluctuation_plot <- data %>%
 Participant `r participant_code` entered the PhenoNetz-Study on `r format(first_day, '%d %B, %Y')`. 
 The last day in the study was `r format(last_day, '%d %B, %Y')`.
 He/she completed `r number_days` days in the study, of which he/she filled out surveys on `r filled_in_days` days.
+He/she is scheduled to be done with the study on `r format(first_day+13, '%d %B, %Y')`.
 
 ## Raw Data 
 ```{r, echo = F}
