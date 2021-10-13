@@ -1,5 +1,4 @@
 
-
 library(shiny)
 
 shinyApp(
@@ -13,7 +12,7 @@ shinyApp(
       ),
       textInput(
         "participant_code",
-        label = "Enter the UKKVIZ-ID you want to generate the data check for in the field below. Make sure to avoid typos.",
+        label = "Enter the UKKVIZY-ID you want to generate the data check for in the field below. Make sure to avoid typos.",
         width = '100%',
         value = ""
       ),

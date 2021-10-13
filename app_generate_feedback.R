@@ -1,5 +1,4 @@
 
-
 library(shiny)
 
 shinyApp(
@@ -14,7 +13,7 @@ shinyApp(
       textInput(
         "participant_code",
         width = '100%',
-        label = "Enter the UKKVIZ-ID you want to get feedback for in the field below. Make sure to avoid typos.",
+        label = "Enter the UKKVIZY-ID you want to get feedback for in the field below. Make sure to avoid typos.",
         value = ""
       ),
       

@@ -43,9 +43,21 @@ removeLinearTrends <- function(df) {
 Participants_Study <- read_csv("Participants_Study_Time_Range.csv")
 
 # define dropouts, irrelevant Test-IDs, etc.
-Participants_Study %>% 
-  filter(!Participant_Code %in% c("UKK1VIZYXFWIZJIM", "UKK1VIZYNEMXSMUK", "UKK1VIZYFOOKKBDR", "UKK1VIZYIAJHBQQD", "UKK1VIZYFTXUDQQV",
-                                "UKK1VIZYCAATYTOJ", "UKK1VIZYPHWVDQPA")) %>% .$Participant_ID  -> final_participants
+Participants_Study %>%
+  filter(
+    !Participant_Code %in% c(
+      "UKK1VIZYXFWIZJIM",
+      "UKK1VIZYNEMXSMUK",
+      "UKK1VIZYFOOKKBDR",
+      "UKK1VIZYIAJHBQQD",
+      "UKK1VIZYFTXUDQQV",
+      "UKK1VIZYGJZWBENV",
+      "UKK1VIZYTDGGOAFC",
+      "UKK1VIZYCAATYTOJ",
+      "UKK1VIZYPHWVDQPA",
+      "UKK1VIZYTBLBGTBY"
+    )
+  ) %>% .$Participant_ID  -> final_participants
 
 ```
 
