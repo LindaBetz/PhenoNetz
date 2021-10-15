@@ -207,3 +207,12 @@ for (i in 1:length(unique(mlvar_data$Participant_ID))) {
   individual_networks_mlvar[[i]] <-
     getNet(res_mlvar, "temporal", subject = i)
 }
+
+
+mlvar_data %>%
+  group_by(Participant_ID) %>%
+  nest() %>%
+  bind_cols(tibble(individual_network = individual_networks_mlvar)) %>%
+  select(individual_network) 
+
+# TODO: add neat extraction of network coeffs in tibble
