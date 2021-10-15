@@ -38,15 +38,15 @@ getPersonalizedModel <-
           df,
           vars = vars,
           beta = "empty",
-          omega_zeta = "full",
+          omega_zeta = "empty",
           beepvar = beepvar,
           dayvar = dayvar,
           verbose = TRUE,
           standardize = "z",
           optimizer = "nlminb",
           estimator = "FIML"
-        ) %>% runmodel %>% stepup(alpha = 0.05) %>% psychonetrics::prune(
-          alpha = 0.05,
+        ) %>% runmodel %>% stepup(alpha = .05) %>% psychonetrics::prune(
+          alpha = .05,
           recursive = F,
           adjust = "none",
           startreduce = 0.95
@@ -65,6 +65,7 @@ getPersonalizedModel <-
 data <- read_csv("Questionnaire_Abfrage.csv")
 Participants_Study <- read_csv("Participants_Study_Time_Range.csv")
 
+all_vars <- c("var_1", "var_5"  ,"var_7"  ,"var_9"  )
 
 # define dropouts, irrelevant Test-IDs, etc.
 Participants_Study %>%
@@ -145,11 +146,11 @@ models_per_person_data <- detrended_data %>%
   mutate(
     constant_vars = map(
       data,
-      ~ .x %>% rename_at(vars(matches("-1-0")), ~ all_vars) %>%
+      ~ .x %>% select(all_of(all_vars)) %>%
         summarise(across(matches("var"), ~ length(unique(
           .
         ))))  %>%
-        select(which(. <= 3)) %>% # <= unique values (constant)
+        select(which(. <= 3)) %>% # <= 3 unique values (constant)
         colnames(.)
     ),
     final_vars = map(constant_vars, ~ subset(all_vars, !(all_vars %in% .x)))
@@ -163,14 +164,14 @@ models_per_person_data <- detrended_data %>%
   )
 
 # we need to "insert" the constant variables into the networks for compatibility
-network_per_person_data <- models_per_person %>%
+network_per_person_data <- models_per_person_data %>%
   filter(Participant_ID != 23) %>% # model not identifiable for 1 person
   mutate(
     contemp_net = map(individualized_model, ~ getmatrix(., "omega_zeta")),
     position_constant_var = map(constant_vars, ~ match(., all_vars)),
-    contemp_net = map2(contemp_net, position_constant_var, ~
+    contemp_net_2 = map2(contemp_net, position_constant_var, ~
                          if (length(.y) >= 1) {
-                           new_mat <- matrix(0, nrow = 10, ncol = 10)
+                           new_mat <- matrix(0, nrow = length(all_vars), ncol = length(all_vars))
                            new_mat[-.y, -.y] <-
                              .x
                           new_mat
