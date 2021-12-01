@@ -1,0 +1,546 @@
+---
+title: "PhenoNetz-Ergebnisse"
+date: "`r format(Sys.time(), '%d. %m. %Y')`"
+author: "FETZ Köln"
+fontsize: 8 pt
+output:
+  beamer_presentation: default
+params:
+  participant_code: NA
+  data: NA
+  participant_ids: NA
+  contemp_only: FALSE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include=FALSE, warning=FALSE}
+# makes sure that all the libraries used are installed
+packages <- c("tidyverse", "psychonetrics", "qgraph", "scales")
+if (length(missing_pkgs <-
+           setdiff(packages, rownames(installed.packages()))) > 0) {
+  message("Installing missing package(s): ",
+          paste(missing_pkgs, collapse = ", "))
+  install.packages(missing_pkgs)
+}
+
+set.seed(1)
+library(tidyverse)
+library(psychonetrics)
+library(qgraph)
+library(scales)
+
+# some parameters to set: 
+participant_code <- params$participant_code # participant code (in "")
+
+# load data
+data <- read_csv(params$data)
+participant_ids <- read_csv(params$participant_ids)
+
+
+alpha <-
+  .01 # significance level for thresholding in networks
+
+smooth <- FALSE # should trend in time-series be included?
+
+# ... function to compute model per person
+getPersonalizedModel <- if (params$contemp_only == FALSE) {
+  function(df,
+           beepvar = "Query_of_Day",
+           dayvar = "date_ESM",
+           vars = final_vars) {
+    tryCatch(
+      expr = {
+        model_pruned <- gvar(
+          df,
+          vars = vars,
+          beta = "empty",
+          omega_zeta = "empty",
+          beepvar = beepvar,
+          dayvar = dayvar,
+          verbose = TRUE,
+          standardize = "z",
+          optimizer = "nlminb",
+          estimator = "FIML"
+        ) %>% runmodel %>% stepup(alpha = alpha) %>% psychonetrics::prune(
+          alpha = alpha,
+          recursive = F,
+          adjust = "none",
+          startreduce = 0.95
+        )
+        # modelsearch(prunealpha = alpha, addalpha = alpha)
+        return(model_pruned)
+      },
+      error = function(e) {
+        return(NULL)
+        message("Error...")
+      }
+    )
+  }
+} else {
+  function(df,
+           beepvar = "Query_of_Day",
+           dayvar = "date_ESM",
+           vars = final_vars) {
+    tryCatch(
+      expr = {
+        model_pruned <- gvar(
+          df,
+          vars = vars,
+          beta = "empty",
+          omega_zeta = "full",
+          beepvar = beepvar,
+          dayvar = dayvar,
+          verbose = TRUE,
+          standardize = "z",
+          optimizer = "nlminb",
+          estimator = "FIML"
+        ) %>% runmodel %>% psychonetrics::prune(
+          alpha = alpha,
+          recursive = F,
+          adjust = "none",
+          startreduce = 0.95
+        ) %>% stepup(alpha = alpha)
+        # modelsearch(prunealpha = alpha, addalpha = alpha)
+        return(model_pruned)
+      },
+      error = function(e) {
+        return(NULL)
+        message("Error...")
+      }
+    )
+  }
+  
+}
+
+
+# function to remove linear trends
+removeLinearTrends <- function(df) {
+  df <- as.data.frame(df)
+  for (v in seq_along(final_vars)) {
+    lmResult <- lm(unlist(df[, final_vars[v]]) ~ df$time_ESM)
+    if (anova(lmResult)[["Pr(>F)"]][1] < .05) {
+      df[, final_vars[v]][!is.na(df[, final_vars[v]])] <- residuals(lmResult)
+    }
+  }
+  return(as_tibble(df))
+}
+
+
+# convert participant code to participant ID 
+participant_id <- participant_ids %>%
+  filter(Participant_Code == participant_code) %>%
+  select(Participant_ID) %>%
+  as.numeric()
+  
+
+label_vars = c(
+  "Ich bin traurig",
+  "Ich nehme Dinge wahr, die andere \n    Menschen nicht wahrnehmen können",
+  "Ich habe Schwierigkeiten, \n    mich zu konzentrieren",
+  "Ich bin kontaktfreudig",
+  "Ich fühle mich gestresst",
+  "Ich bin zufrieden mit mir",
+  "Ich fühle mich ängstlich",
+  "Es fällt mir schwer, \n    mich zu Dingen zu motivieren",
+  "Ich bin misstrauisch \n    gegenüber anderen Menschen",
+  "Ich grüble"
+)
+
+all_vars <- paste0("var_", c(as.character(1:10)))
+
+
+# plot: strength of experiences
+severity_plot <- data %>%
+  mutate(date_ESM = as.Date(DateTime),
+         time_ESM = DateTime) %>%
+  filter(Participant_ID == participant_id) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  select(label_vars) %>%
+  summarise_all(mean) %>%
+  pivot_longer(cols = everything(),
+               names_to = "Erlebnis",
+               values_to = "Wert") %>%
+  mutate(Erlebnis = reorder(Erlebnis, Wert)) %>%
+  ggplot(., aes(x = Erlebnis, y = Wert, fill = Erlebnis)) +
+  geom_bar(stat = "identity") +
+  xlab("") +
+  ylab("\n Durchschnittliche Stärke (%)") +
+  coord_flip() + theme_classic() +
+  theme(
+    legend.position  = "none",
+    axis.title = element_text(size = 14, colour = "black"),
+    axis.text = element_text(size = 14, color = "black")
+  ) +
+  scale_fill_viridis_d()
+
+
+# plot: fluctuation of experiences
+  most_variable_items <- data %>%
+  mutate(date_ESM = as.Date(DateTime),
+         time_ESM = DateTime) %>%
+  filter(Participant_ID == participant_id) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  select(label_vars) %>%
+  summarise_all(sd) %>%
+  pivot_longer(cols = everything(),
+               names_to = "Erlebnis",
+               values_to = "Wert") %>%
+  top_n(3, Wert)
+fluctuation_plot <- data %>%
+  mutate(date_ESM = as.Date(DateTime),
+         time_ESM = DateTime) %>%
+  filter(Participant_ID == participant_id) %>%
+  rename_at(vars(matches("1-0")), ~ label_vars) %>%
+  select(most_variable_items$Erlebnis, time_ESM) %>%
+  pivot_longer(cols = most_variable_items$Erlebnis,
+               names_to = "Erlebnis",
+               values_to = "Wert") %>%
+  ggplot(., aes(x = time_ESM, y = Wert, color = Erlebnis)) + facet_wrap(~
+                                                                          Erlebnis, ncol = 1) +  geom_line(size =
+                                                                                                             1) +
+  theme_classic() +
+  xlab("\n Datum") +
+  theme(
+    legend.position  = "none",
+    strip.text = element_text(size = 14, colour = "black"),
+    axis.title = element_text(size = 14, colour = "black"),
+    axis.text = element_text(size = 14, colour = "black")
+  ) +
+  scale_color_viridis_d() +
+  scale_y_continuous(limits = c(-10, 100),
+                     breaks = c(0, 25, 50, 75, 100)) +
+  scale_x_datetime(breaks =  date_breaks("2 days"), labels = date_format("%d.%m."))
+    
+
+
+# check for any completely constant ESM variable
+constant_var <- data %>% 
+  filter(Participant_ID == participant_id) %>%
+  rename_at(vars(matches("-1-0")), ~ all_vars) %>%
+  summarise(across(matches("var"), ~ length(unique(.)))) %>%
+  select(which(. <= 4)) %>%
+  colnames(.)
+
+# if there is any completely constant variable, we remove it for computation of the networks
+final_vars <- subset(all_vars, !(all_vars %in% constant_var))
+
+# compute individualized network models
+model_personalized <- data %>%
+  mutate(date_ESM = as.Date(DateTime),
+         time_ESM = DateTime) %>%
+  filter(Participant_ID == participant_id) %>%
+  mutate(
+    Day_Study = date_ESM - .$date_ESM[1] + 1,
+    DateTime = str_replace(DateTime, "UTC", "CET"),
+    Query_of_Day = case_when(
+      as.POSIXct(paste(date_ESM, "08:30:00")) <= DateTime &
+        as.POSIXct(paste(date_ESM, "10:30:00")) >= DateTime ~ 1,
+      as.POSIXct(paste(date_ESM, "11:30:00")) <= DateTime &
+        as.POSIXct(paste(date_ESM, "13:30:00")) >= DateTime ~ 2,
+      as.POSIXct(paste(date_ESM, "14:30:00")) <= DateTime &
+        as.POSIXct(paste(date_ESM, "16:30:00")) >= DateTime ~ 3,
+      as.POSIXct(paste(date_ESM, "17:30:00")) <= DateTime &
+        as.POSIXct(paste(date_ESM, "19:30:00")) >= DateTime ~ 4,
+      as.POSIXct(paste(date_ESM, "20:30:00")) <= DateTime &
+        as.POSIXct(paste(date_ESM, "22:30:00")) >= DateTime ~ 5
+    )
+  )  %>%
+  mutate(
+    Lead_Day = lead(Query_of_Day, 1),
+    Query_of_Day = case_when(
+      Lead_Day == Query_of_Day ~ Query_of_Day - 1,
+      is.na(Lead_Day == Query_of_Day) ~ Query_of_Day,
+      TRUE ~ Query_of_Day
+    )
+  ) %>%
+  mutate(
+    Ref_Time = case_when(
+      Query_of_Day == 1 ~ as.POSIXct(paste(date_ESM, "09:30:00")),
+      Query_of_Day == 2 ~ as.POSIXct(paste(date_ESM, "12:30:00")),
+      Query_of_Day == 3 ~ as.POSIXct(paste(date_ESM, "15:30:00")),
+      Query_of_Day == 4 ~ as.POSIXct(paste(date_ESM, "18:30:00")),
+      Query_of_Day == 5 ~ as.POSIXct(paste(date_ESM, "21:30:00"))
+    )
+  ) %>%
+  mutate(Diff_Time = difftime(DateTime, Ref_Time,  units = "mins")) %>%
+  mutate(Query_of_Day = ifelse(abs(Diff_Time) > 60, NA, Query_of_Day)) %>%
+  rename_at(vars(matches("-1-0")), ~ all_vars) %>%
+  mutate(across(matches("var_"), function(x)
+    ifelse(is.na(.$Query_of_Day), NA, x))) %>%
+  select(c(Questionnaire_of_Day, Query_of_Day, final_vars, date_ESM,  time_ESM,  Day_Study)) %>%
+  removeLinearTrends() %>%
+  getPersonalizedModel()
+
+# contemporaneous network
+contemporaneous_network <-
+  getmatrix(model_personalized, "omega_zeta")
+
+position_constant_var <- match(constant_var, all_vars) # match as a "vectorized" which
+
+if(length(position_constant_var) >= 1) {
+  new_mat <- matrix(0, nrow = 10, ncol = 10)
+  new_mat[-position_constant_var,-position_constant_var] <-
+    contemporaneous_network
+  contemporaneous_network <- new_mat
+}
+
+# get strongest connections contemporaneous network
+strongest_connection_contemp <-
+  label_vars[which(abs(contemporaneous_network) == max(abs(contemporaneous_network)),
+                   arr.ind = TRUE)[, 1]]
+strongest_connection_contemp[1] <-
+  paste0("'", strongest_connection_contemp[1], "'")
+strongest_connection_contemp[2] <-
+  paste0("'", strongest_connection_contemp[2], "'")
+contemp_nodes <-
+  which(abs(contemporaneous_network) == max(abs(contemporaneous_network)),
+        arr.ind = TRUE)[, 1]
+
+# feedback sentences contemporaneous network
+start_sentence <- c(
+  "Je trauriger Sie sich fühlten, ",
+  "Je mehr Sie das Gefühl hatten, Dinge wahrzunehmen, die andere Menschen nicht wahrnehmen können, ",
+  "Je mehr Schwierigkeiten Sie hatten, sich zu konzentrieren, ",
+  "Je kontaktfreudiger Sie waren, ",
+  "Je gestresster Sie sich fühlten, ",
+  "Je zufriedener Sie mit sich waren, ",
+  "Je ängstlicher Sie sich fühlten, ",
+  "Je schwerer es Ihnen fiel, sich zu Dingen zu motivieren, ",
+  "Je misstrauischer Sie gegenüber anderen Menschen waren, ",
+  "Je mehr Sie grübelten, "
+)
+end_sentence_positive <-
+  c(
+    "desto trauriger fühlten Sie sich zur selben Zeit",
+    "desto mehr hatten Sie zur selben Zeit das Gefühl, Dinge wahrzunehmen, die andere Menschen nicht wahrnehmen können",
+    "desto mehr Schwierigkeiten hatten Sie, sich zur selben Zeit zu konzentrieren",
+    "desto kontaktfreudiger waren Sie zur selben Zeit",
+    "desto gestresster fühlten Sie sich zur selben Zeit",
+    "desto zufriedener waren Sie mit sich zur selben Zeit",
+    "desto ängstlicher fühlten Sie sich zur selben Zeit",
+    "desto schwieriger fiel es Ihnen, sich zu Dingen zu motivieren",
+    "desto misstrauischer waren Sie gegenüber anderen Menschen",
+    "desto mehr grübelten Sie"
+  )
+end_sentence_negative <-
+  c(
+    "desto weniger traurig fühlten Sie sich zur selben Zeit",
+    "desto weniger hatten Sie zur selben Zeit das Gefühl, Dinge wahrzunehmen, die andere Menschen nicht wahrnehmen können",
+    "desto weniger Schwierigkeiten hatten Sie, sich zur selben Zeit zu konzentrieren",
+    "desto weniger kontaktfreudig waren Sie zur selben Zeit",
+    "desto weniger gestresst fühlten Sie sich zur selben Zeit",
+    "desto weniger zufrieden waren Sie mit sich zur selben Zeit",
+    "desto weniger ängstlich fühlten Sie sich zur selben Zeit",
+    "desto weniger schwer fiel es Ihnen, sich zu Dingen zu motivieren",
+    "desto weniger misstrauisch waren Sie gegenüber anderen Menschen",
+    "desto weniger grübelten Sie"
+  )
+
+formulation_contemp <-
+  ifelse(
+    contemporaneous_network[abs(contemporaneous_network) >= max(abs(contemporaneous_network))][1] > 0,
+    paste0(start_sentence[contemp_nodes[1]], end_sentence_positive[contemp_nodes[2]]),
+    paste0(start_sentence[contemp_nodes[1]], end_sentence_negative[contemp_nodes[2]])
+  )
+most_central_item <-
+  paste0("'", label_vars[centralityTable(contemporaneous_network) %>% filter(measure == "Strength") %>%
+                           arrange(-value) %>%
+                           select(node) %>%
+                           .[1, ] %>%
+                           as.numeric], "'")
+
+# temporal network
+temporal_network <- getmatrix(model_personalized, "PDC")
+temporal_network[is.nan(temporal_network)] <- 0
+temporal_network[is.infinite(temporal_network)] <- 0
+
+
+if(length(position_constant_var) >= 1) {
+  new_mat <- matrix(0, nrow = 10, ncol = 10)
+  new_mat[-position_constant_var, -position_constant_var] <-
+    temporal_network
+  temporal_network <- new_mat
+}
+
+# get strongest connections temporal network
+if (sum(abs(temporal_network)) > 0) {
+  strongest_connection_temp <-
+    label_vars[which(abs(temporal_network) == max(abs(temporal_network)), arr.ind = TRUE)]
+  strongest_connection_temp[1] <-
+    paste0("'", strongest_connection_temp[1], "'")
+  strongest_connection_temp[2] <-
+    paste0("'", strongest_connection_temp[2], "'")
+  
+  # feedback sentences temporal network
+  formulation_temp_strongest <-
+    paste0(
+      "Der insgesamt stärkste Zusammenhang zeigte sich zwischen ",
+      strongest_connection_temp[1],
+      " und ",
+      strongest_connection_temp[2]
+    )
+  
+  temp_nodes <-
+    which(abs(temporal_network) == max(abs(temporal_network)), arr.ind = TRUE)
+  
+  start_sentence <- c(
+    "Je trauriger Sie sich fühlten, ",
+    "Je mehr Sie das Gefühl hatten, Dinge wahrzunehmen, die andere Menschen nicht wahrnehmen können, ",
+    "Je mehr Schwierigkeiten Sie hatten, sich zu konzentrieren, ",
+    "Je kontaktfreudiger Sie waren, ",
+    "Je gestresster Sie sich fühlten, ",
+    "Je zufriedener Sie mit sich waren, ",
+    "Je ängstlicher Sie sich fühlten, ",
+    "Je schwerer es Ihnen fiel, sich zu Dingen zu motivieren, ",
+    "Je misstrauischer Sie gegenüber anderen Menschen waren, ",
+    "Je mehr Sie grübelten, "
+  )
+  
+  end_sentence_positive <-
+    c(
+      "desto trauriger fühlten Sie sich 3 Stunden später",
+      "desto mehr hatten Sie 3 Stunden später das Gefühl, Dinge wahrzunehmen, die andere Menschen nicht wahrnehmen können",
+      "desto mehr Schwierigkeiten hatten Sie, sich 3 Stunden später zu konzentrieren",
+      "desto kontaktfreudiger waren Sie 3 Stunden später",
+      "desto gestresster fühlten Sie sich 3 Stunden später",
+      "desto zufriedener waren Sie mit sich 3 Stunden später",
+      "desto ängstlicher fühlten Sie sich 3 Stunden später",
+      "desto schwerer fiel es Ihnen 3 Stunden später, sich zu Dingen zu motivieren",
+      "desto misstrauischer waren Sie 3 Stunden später gegenüber anderen Menschen",
+      "desto mehr grübelten Sie 3 Stunden später"
+    )
+  
+  end_sentence_negative <-
+    c(
+      "desto weniger traurig fühlten Sie sich 3 Stunden später",
+      "desto weniger hatten Sie 3 Stunden später das Gefühl, Dinge wahrzunehmen, die andere Menschen nicht wahrnehmen können",
+      "desto weniger Schwierigkeiten hatten Sie, sich 3 Stunden später zu konzentrieren",
+      "desto weniger kontaktfreudig waren Sie 3 Stunden später",
+      "desto weniger gestresst fühlten Sie sich 3 Stunden später",
+      "desto weniger zufrieden waren Sie mit sich 3 Stunden später",
+      "desto weniger ängstlich fühlten Sie sich 3 Stunden später",
+      "desto weniger schwer fiel es Ihnen 3 Stunden später, sich zu Dingen zu motivieren",
+      "desto weniger misstrauisch waren Sie 3 Stunden später gegenüber anderen Menschen",
+      "desto weniger grübelten Sie 3 Stunden später"
+    )
+
+  formulation_temp <-
+    ifelse(
+      temporal_network[abs(temporal_network) >= max(abs(temporal_network))][1] > 0,
+      paste0(start_sentence[temp_nodes[1]],
+             end_sentence_positive[temp_nodes[2]], "."),
+      paste0(start_sentence[temp_nodes[1]],
+             end_sentence_negative[temp_nodes[2]], ".")
+    )
+} else {
+  formulation_temp_strongest <-
+    c(
+      "Bei Ihnen zeigten sich über die Zeit keine Zusammenhänge zwischen den Erlebnissen. Dies kann daran liegen, dass sich bei Ihnen die Erlebnisse während der zwei Wochen der Teilnahme schneller veränderten, als sie in der PhenoNetz-Studie erhoben wurden"
+    )
+  formulation_temp <- " "
+}
+```
+
+## PhenoNetz
+Im Rahmen der PhenoNetz-Studie haben Sie fünfmal täglich über einen Zeitraum von zwei Wochen die folgenden Fragen auf Ihrem Smartphone in der "InsightsApp" beantwortet:
+
+
+- Ich bin traurig
+- Ich nehme Dinge wahr, die andere Menschen nicht wahrnehmen können
+- Ich habe Schwierigkeiten, mich zu konzentrieren
+- Ich bin kontaktfreudig
+- Ich fühle mich gestresst
+- Ich bin zufrieden mit mir 
+- Ich fühle mich ängstlich
+- Es fällt mir schwer, mich zu Dingen zu motivieren
+- Ich bin misstrauisch gegenüber anderen Menschen
+- Ich grüble
+
+
+![](./imgs/insights_logo.png){width=30%}
+
+## Durchschnittliche Ausprägung der Erlebnisse
+Hier zeigen wir Ihnen die durchschnittliche Stärke, mit der Sie einzelne Erlebnisse berichtet haben:
+````{r}
+severity_plot
+```
+
+## Erlebnisse über die Zeit
+Hier zeigen wir, wie sich Erlebnisse über die Zeit der PhenoNetz-Studie bei Ihnen verändert haben:
+````{r}
+fluctuation_plot
+```
+
+## PhenoNetzwerke
+Auf den folgenden zwei Folien zeigen wir Ihnen Ihre persönlichen Netzwerke, die aus den Daten, die Sie über zwei Wochen in die "InsightsApp" eingegeben haben, erstellt wurden. Bei der Darstellung dieser Netzwerke gilt Folgendes:
+
+- Jedes der zehn Erlebnisse wird durch einen eigenen Kreis dargestellt.
+- Blaue Linien zwischen den Kreisen zeigen positive Zusammenhänge. Das heißt, zwei so verbundene Erlebnisse verstärken sich im Schnitt gegenseitig.
+- Rote Linien zwischen den Kreisen zeigen negative Zusammenhänge. Das heißt, zwei so verbundene Erlebnisse hemmen sich im Schnitt gegenseitig.
+- Je dicker die Linie, desto stärker die Verstärkung bzw. die Hemmung.
+- Falls es keine Linie zwischen zwei Kreisen gibt, haben diese Erlebnisse keinen oder nur einen sehr geringen Einfluss aufeinander.
+
+## Netzwerk 1: Wie Ihre Erlebnisse zusammenhängen
+Dieses Netzwerk zeigt, welche Erlebnisse wie zu einem Zeitpunkt der Studie im Schnitt in Beziehung zueinander standen. 
+
+- Der zentrale Faktor in Ihrem Netzwerk ist `r most_central_item`. Dieser Faktor verstärkte bzw. hemmte andere Faktoren im Netzwerk am meisten. 
+- Der insgesamt stärkste Zusammenhang zeigte sich zwischen `r strongest_connection_contemp [1]` und `r strongest_connection_contemp [2]`. `r formulation_contemp`.
+```{r}
+qgraph(
+  contemporaneous_network,
+  theme = "Borkulo",
+  layout="spring",
+  cut = 0,
+  maximum = 0.5,
+  labels = 1:10,
+  layoutOffset = c(-0.05, 0),
+  nodeNames = label_vars,
+  label.cex = 1.75,
+  legend.cex = 0.75,
+  layoutScale = c(0.8, 0.8),
+  GLratio = 1,
+  vsize = 5,
+  edge.width = 1,
+  mar =  c(7,3,3,3)
+)
+```
+
+## Netzwerk 2: Wie sich Ihre Erlebnisse über die Zeit vorhersagen
+Dieses Netzwerk zeigt, wie sich Ihre Erlebnisse im Schnitt von einem Zeitpunkt zum nächsten Zeitpunkt (ca. 3 Stunden später) vorhersagten.
+
+- `r formulation_temp_strongest`. `r formulation_temp`
+```{r}
+qgraph(
+  temporal_network,
+  theme = "Borkulo",
+  layout="spring",
+  cut = 0,
+  maximum = 0.5,
+  labels = 1:10,
+  layoutOffset = c(-0.05, 0),
+  nodeNames = label_vars,
+  label.cex = 1.75,
+  legend.cex = 0.75,
+  layoutScale = c(0.8, 0.8),
+  GLratio = 1,
+  vsize = 5,
+  edge.width = 1,
+  mar = c(5,3,3,3)
+)
+```
+
+## Bitte beachten Sie:
+- Die Netzwerke, die wir Ihnen vorgestellt haben, sind vorläufig und basieren auf Daten aus den zwei Wochen, in denen Sie an der PhenoNetz-Studie teilgenommen haben. Diese zwei Wochen sind unter Umständen nicht mit Ihrem regelmäßigen Alltag vergleichbar (z.B. weil es ggf. außergewöhnliche Ereignisse in Ihrem Leben gab). 
+- Es gibt bisher in der Forschung noch keine genaue Übereinstimmung darüber, wie man Netzwerk-Strukturen interpretieren sollte.
+- Keinesfalls ersetzen die Netzwerke eine psychologische Beratung oder Behandlung. 
+- Viele verschiedene Faktoren können das Aussehen der Netzwerke beeinflussen, z.B. welche Erlebnisse erfasst wurden, wie oft sie erhoben wurden, und wie oft diese Erlebnisse für Sie schwankten.
+
+Falls Sie weitere Fragen zur PhenoNetz-Studie oder Ihren Ergebnissen haben, wenden Sie sich gerne an:
+
+- Dr. Marlene Rosen (marlene.rosen@uk-koeln.de)
+- Linda Betz, M.Sc. (linda.betz@uk-koeln.de)
+
+Vielen herzlichen Dank für Ihre Teilnahme!
